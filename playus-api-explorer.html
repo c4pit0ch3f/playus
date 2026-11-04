@@ -585,6 +585,27 @@
     font-style: italic;
   }
   .server-group.collapsed .section-desc { display: none; }
+  .curl-details { margin-top: 20px; }
+  .curl-details summary {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0;
+  }
+  .curl-details summary::-webkit-details-marker { display: none; }
+  .curl-details summary::before {
+    content: "\25B8";
+    color: var(--fg-muted);
+    transition: transform .15s;
+  }
+  .curl-details[open] summary::before { transform: rotate(90deg); }
   .flow-step {
     display: inline-flex;
     align-items: center;
@@ -2161,11 +2182,13 @@ function showDetail(idx) {
       <span class="spinner"></span>
       ${sendLabel}
     </button>
-    <div class="section-title">cURL</div>
-    <div class="response-body" style="position:relative">
-      <button class="copy-btn" onclick="copyCurl(${idx})" style="position:absolute;top:8px;right:8px">Copier</button>
-      <pre id="curl-preview">${buildCurl(ep)}</pre>
-    </div>
+    <details class="curl-details">
+      <summary>cURL (PowerShell)</summary>
+      <div class="response-body" style="position:relative">
+        <button class="copy-btn" onclick="copyCurl(${idx})" style="position:absolute;top:8px;right:8px">Copier</button>
+        <pre id="curl-preview">${buildCurl(ep)}</pre>
+      </div>
+    </details>
     <div class="response-section" id="response-section" hidden>
       <div class="response-header">
         <div class="section-title" style="margin:0">Réponse</div>
@@ -2219,15 +2242,15 @@ function buildCurl(ep) {
     if (q.parent) {
       reqUrl = "https://firestore.googleapis.com/v1/" + q.parent + ":runQuery";
     }
-    let parts = [`curl -X POST`];
+    let parts = [`curl.exe -X POST`];
     parts.push(`  -H "Authorization: Bearer <FIREBASE_TOKEN>"`);
     parts.push(`  -H "Content-Type: application/json"`);
     parts.push(`  -d '${JSON.stringify(q.parent ? { structuredQuery: q.structuredQuery } : q, null, 2)}'`);
     parts.push(`  "${reqUrl}"`);
-    return parts.join(" \\\n");
+    return parts.join(" `\n");
   }
 
-  let parts = [`curl -X ${method}`];
+  let parts = [`curl.exe -X ${method}`];
   if (srv.auth === "bearer") parts.push(`  -H "Authorization: Bearer <FIREBASE_TOKEN>"`);
   if (srv.auth === "klipy") {
     parts.push(`  -H "X-API-Key: <KLIPY_KEY>"`);
@@ -2244,7 +2267,7 @@ function buildCurl(ep) {
     parts.push(`  -d '${JSON.stringify(data, null, 2)}'`);
   }
   parts.push(`  "${url}"`);
-  return parts.join(" \\\n");
+  return parts.join(" `\n");
 }
 
 function updateCurlPreview(idx) {
@@ -2282,16 +2305,16 @@ function updateCurlPreview(idx) {
     let reqUrl = url;
     if (resolved.parent) reqUrl = "https://firestore.googleapis.com/v1/" + resolved.parent + ":runQuery";
     const token = document.getElementById("authToken").value.trim();
-    let parts = [`curl -X POST`];
+    let parts = [`curl.exe -X POST`];
     parts.push(`  -H "Authorization: Bearer ${token || "<FIREBASE_TOKEN>"}"`);
     parts.push(`  -H "Content-Type: application/json"`);
     parts.push(`  -d '${JSON.stringify(resolved.parent ? { structuredQuery: resolved.structuredQuery } : resolved, null, 2)}'`);
     parts.push(`  "${reqUrl}"`);
-    document.getElementById("curl-preview").textContent = parts.join(" \\\n");
+    document.getElementById("curl-preview").textContent = parts.join(" `\n");
     return;
   }
 
-  let parts = [`curl -X ${method}`];
+  let parts = [`curl.exe -X ${method}`];
   if (srv.auth === "bearer") {
     const token = document.getElementById("authToken").value.trim();
     parts.push(`  -H "Authorization: Bearer ${token || "<FIREBASE_TOKEN>"}"`);
@@ -2308,7 +2331,7 @@ function updateCurlPreview(idx) {
     parts.push(`  -d '${JSON.stringify(data, null, 2)}'`);
   }
   parts.push(`  "${url}"`);
-  document.getElementById("curl-preview").textContent = parts.join(" \\\n");
+  document.getElementById("curl-preview").textContent = parts.join(" `\n");
 }
 
 async function sendRequest(idx) {
