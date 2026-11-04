@@ -793,6 +793,62 @@
     line-height: 1.5;
     margin: 8px 0;
   }
+
+  .autofill-wrap {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+  }
+  .autofill-wrap .param-input { flex: 1; min-width: 0; }
+  .autofill-btn {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .autofill-btn:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .autofill-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 200;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(0,0,0,.18);
+    max-height: 240px;
+    overflow-y: auto;
+    min-width: 220px;
+    max-width: 340px;
+  }
+  .autofill-dropdown .af-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border-bottom: 1px solid var(--border);
+  }
+  .autofill-dropdown .af-item:last-child { border-bottom: none; }
+  .autofill-dropdown .af-item:hover { background: var(--accent-soft); }
+  .autofill-dropdown .af-item .af-name { font-weight: 600; color: var(--fg); }
+  .autofill-dropdown .af-item .af-sub { font-size: 11px; color: var(--fg-muted); }
+  .autofill-dropdown .af-item .af-id { font-family: var(--font-mono); font-size: 10px; color: var(--fg-muted); }
+  .autofill-dropdown .af-loading {
+    padding: 14px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
 </style>
 
 <div class="app-shell">
@@ -1180,6 +1236,151 @@ function signOut() {
   document.getElementById('signin-error').hidden = true;
   document.getElementById('oauth-url-paste').value = '';
   updateAuthDot();
+}
+
+const _cache = { groups: null, games: null };
+
+function getMyUid() {
+  const uidEl = document.getElementById('user-uid');
+  if (uidEl && uidEl.textContent && uidEl.textContent !== '—') return uidEl.textContent;
+  try {
+    const token = document.getElementById('authToken').value.trim();
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+      return payload.user_id || payload.sub || null;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function fetchMyGroups(force) {
+  if (_cache.groups && !force) return _cache.groups;
+  const uid = getMyUid();
+  const token = document.getElementById('authToken').value.trim();
+  if (!uid || !token) return null;
+  const res = await fetch(
+    'https://firestore.googleapis.com/v1/projects/playus-ds/databases/(default)/documents:runQuery',
+    { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'Group' }], where: { fieldFilter: { field: { fieldPath: 'members' }, op: 'ARRAY_CONTAINS', value: { stringValue: uid } } } } }) }
+  );
+  const data = await res.json();
+  if (!Array.isArray(data)) return null;
+  _cache.groups = data.filter(r => r.document).map(r => {
+    const d = r.document, f = d.fields || {}, id = d.name.split('/').pop();
+    return { id, name: f.name ? (f.name.stringValue || id) : (f.groupName ? (f.groupName.stringValue || id) : id) };
+  });
+  return _cache.groups;
+}
+
+async function fetchAllGames(force) {
+  if (_cache.games && !force) return _cache.games;
+  const token = document.getElementById('authToken').value.trim();
+  if (!token) return null;
+  const res = await fetch(
+    'https://firestore.googleapis.com/v1/projects/playus-ds/databases/(default)/documents:runQuery',
+    { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'Game' }] } }) }
+  );
+  const data = await res.json();
+  if (!Array.isArray(data)) return null;
+  _cache.games = data.filter(r => r.document).map(r => {
+    const d = r.document, f = d.fields || {}, id = d.name.split('/').pop();
+    const name = f.name ? (f.name.stringValue || id) : (f.title ? (f.title.stringValue || id) : id);
+    const cat = f.category ? (f.category.stringValue || '') : '';
+    return { id, name, category: cat };
+  });
+  return _cache.games;
+}
+
+function fillUidField(inputId) {
+  const uid = getMyUid();
+  if (!uid) {
+    const btn = document.getElementById('authToggle');
+    btn.style.background = 'var(--error)'; btn.style.color = '#fff';
+    setTimeout(() => { btn.style.background = ''; btn.style.color = ''; }, 1500);
+    document.getElementById('auth-panel').hidden = false;
+    return;
+  }
+  const el = document.getElementById(inputId);
+  if (el) { el.value = uid; el.dispatchEvent(new Event('input')); }
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.autofill-btn')) {
+    document.querySelectorAll('.autofill-dropdown').forEach(d => d.remove());
+  }
+});
+
+async function showGroupDropdown(btn, inputId) {
+  document.querySelectorAll('.autofill-dropdown').forEach(d => d.remove());
+  const dd = document.createElement('div');
+  dd.className = 'autofill-dropdown';
+  dd.innerHTML = '<div class="af-loading">Chargement des groupes...</div>';
+  btn.appendChild(dd);
+  dd.addEventListener('click', e => e.stopPropagation());
+  try {
+    const groups = await fetchMyGroups();
+    if (!groups || groups.length === 0) {
+      dd.innerHTML = '<div class="af-loading">Aucun groupe trouvé — authentifiez-vous d\'abord</div>';
+      return;
+    }
+    if (groups.length === 1) {
+      const el = document.getElementById(inputId);
+      if (el) { el.value = groups[0].id; el.dispatchEvent(new Event('input')); }
+      dd.remove();
+      return;
+    }
+    dd.innerHTML = '';
+    groups.forEach(g => {
+      const item = document.createElement('div');
+      item.className = 'af-item';
+      item.innerHTML = `<span class="af-name">${escHtml(g.name)}</span><span class="af-id">${escHtml(g.id)}</span>`;
+      item.addEventListener('click', () => {
+        const el = document.getElementById(inputId);
+        if (el) { el.value = g.id; el.dispatchEvent(new Event('input')); }
+        dd.remove();
+      });
+      dd.appendChild(item);
+    });
+  } catch(e) {
+    dd.innerHTML = `<div class="af-loading">Erreur : ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function showGameDropdown(btn, inputId) {
+  document.querySelectorAll('.autofill-dropdown').forEach(d => d.remove());
+  const dd = document.createElement('div');
+  dd.className = 'autofill-dropdown';
+  dd.innerHTML = '<div class="af-loading">Chargement des jeux...</div>';
+  btn.appendChild(dd);
+  dd.addEventListener('click', e => e.stopPropagation());
+  try {
+    const games = await fetchAllGames();
+    if (!games || games.length === 0) {
+      dd.innerHTML = '<div class="af-loading">Aucun jeu trouvé — authentifiez-vous d\'abord</div>';
+      return;
+    }
+    dd.innerHTML = '';
+    games.forEach(g => {
+      const item = document.createElement('div');
+      item.className = 'af-item';
+      item.innerHTML = `<span class="af-name">${escHtml(g.name)}</span>` +
+        (g.category ? `<span class="af-sub">${escHtml(g.category)}</span>` : '') +
+        `<span class="af-id">${escHtml(g.id)}</span>`;
+      item.addEventListener('click', () => {
+        const el = document.getElementById(inputId);
+        if (el) { el.value = g.id; el.dispatchEvent(new Event('input')); }
+        dd.remove();
+      });
+      dd.appendChild(item);
+    });
+  } catch(e) {
+    dd.innerHTML = `<div class="af-loading">Erreur : ${escHtml(e.message)}</div>`;
+  }
 }
 
 const API = {
@@ -1849,6 +2050,18 @@ function showDetail(idx) {
     ep.params.forEach((p, i) => {
       const reqBadge = p.required ? `<span class="param-required">requis</span>` : "";
       const inputType = p.type === "number" ? "number" : "text";
+      const pLow = p.name.toLowerCase();
+      const isUid = /^(uid|userid|targetuserid)$/.test(pLow);
+      const isGroup = /^(groupid)$/.test(pLow);
+      const isGame = /^(gameid)$/.test(pLow);
+      const inputId = `param-${idx}-${i}`;
+      let afBtn = '';
+      if (isUid) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();fillUidField('${inputId}')">Mon UID</button>`;
+      else if (isGroup) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGroupDropdown(this,'${inputId}')">Mes groupes</button>`;
+      else if (isGame) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGameDropdown(this,'${inputId}')">Jeux</button>`;
+      const inputHtml = afBtn
+        ? `<div class="autofill-wrap"><input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">${afBtn}</div>`
+        : `<input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">`;
       paramsHtml += `
         <div class="param-row">
           <div class="param-meta">
@@ -1857,7 +2070,7 @@ function showDetail(idx) {
             ${reqBadge}
           </div>
           <div class="param-desc">${p.description}</div>
-          <input class="param-input" type="${inputType}" id="param-${idx}-${i}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">
+          ${inputHtml}
         </div>`;
     });
     paramsHtml += `</div>`;
