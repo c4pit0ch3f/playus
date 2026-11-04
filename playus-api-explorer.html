@@ -1,0 +1,1467 @@
+<title>PlayUs API Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: mobile-first single-column, endpoint list → detail view toggle */
+  :root {
+    --bg: #f8f7f5;
+    --bg-card: #ffffff;
+    --bg-input: #f0eee9;
+    --fg: #1a1a1a;
+    --fg-dim: #6b6560;
+    --fg-muted: #9e9790;
+    --accent: #e85d2a;
+    --accent-soft: #fef0ea;
+    --border: #e5e0d8;
+    --get: #2e8b57;
+    --get-bg: #eef7f1;
+    --post: #e85d2a;
+    --post-bg: #fef0ea;
+    --put: #c88a1a;
+    --put-bg: #fdf5e6;
+    --delete: #c0392b;
+    --delete-bg: #fbeaea;
+    --ws: #6c5ce7;
+    --ws-bg: #f0eeff;
+    --success: #27ae60;
+    --error: #c0392b;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Menlo', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141210;
+      --bg-card: #1e1c18;
+      --bg-input: #2a2720;
+      --fg: #e8e4de;
+      --fg-dim: #a09888;
+      --fg-muted: #706858;
+      --accent: #f07040;
+      --accent-soft: #2e1e14;
+      --border: #332e26;
+      --get: #4ecb71;
+      --get-bg: #162218;
+      --post: #f07040;
+      --post-bg: #2e1e14;
+      --put: #e0a832;
+      --put-bg: #2a2210;
+      --delete: #e74c3c;
+      --delete-bg: #2e1410;
+      --ws: #a29bfe;
+      --ws-bg: #1c1a2e;
+      --success: #4ecb71;
+      --error: #e74c3c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141210;
+    --bg-card: #1e1c18;
+    --bg-input: #2a2720;
+    --fg: #e8e4de;
+    --fg-dim: #a09888;
+    --fg-muted: #706858;
+    --accent: #f07040;
+    --accent-soft: #2e1e14;
+    --border: #332e26;
+    --get: #4ecb71;
+    --get-bg: #162218;
+    --post: #f07040;
+    --post-bg: #2e1e14;
+    --put: #e0a832;
+    --put-bg: #2a2210;
+    --delete: #e74c3c;
+    --delete-bg: #2e1410;
+    --ws: #a29bfe;
+    --ws-bg: #1c1a2e;
+    --success: #4ecb71;
+    --error: #e74c3c;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-display);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0;
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top, 0px);
+    z-index: 100;
+    background: var(--bg);
+  }
+
+  .app-header {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 50;
+    background: var(--bg);
+    padding: 14px 0 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .app-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    flex: 1;
+    min-width: 0;
+  }
+  .app-header h1 span { color: var(--accent); }
+
+  .auth-toggle {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--fg-dim);
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .auth-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .auth-toggle .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--error);
+    flex-shrink: 0;
+  }
+  .auth-toggle .dot.ok { background: var(--success); }
+
+  .back-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 0;
+    white-space: nowrap;
+  }
+  .back-btn::before { content: "← "; }
+
+  /* Auth Panel */
+  .auth-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin: 12px 0;
+  }
+  .auth-panel h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--fg);
+  }
+  .auth-field { margin-bottom: 10px; }
+  .auth-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    margin-bottom: 4px;
+  }
+  .auth-field input, .auth-field textarea {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  .auth-field input:focus, .auth-field textarea:focus {
+    border-color: var(--accent);
+  }
+  .auth-field textarea { resize: vertical; min-height: 60px; }
+  .auth-hint {
+    font-size: 11px;
+    color: var(--fg-muted);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  /* Server groups */
+  .server-group {
+    margin: 16px 0;
+  }
+  .server-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+    user-select: none;
+  }
+  .server-group-header h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--fg-dim);
+    flex: 1;
+    min-width: 0;
+  }
+  .server-group-header .server-url {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 50%;
+  }
+  .server-group-header .chevron {
+    color: var(--fg-muted);
+    font-size: 12px;
+    transition: transform .15s;
+  }
+  .server-group.collapsed .chevron { transform: rotate(-90deg); }
+  .server-group.collapsed .endpoint-list { display: none; }
+
+  .endpoint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Endpoint card in list */
+  .endpoint-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color .1s;
+  }
+  .endpoint-card:hover { border-color: var(--accent); }
+  .endpoint-card:active { transform: scale(0.995); }
+
+  .method-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 3px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    text-align: center;
+    min-width: 44px;
+  }
+  .method-badge.GET { background: var(--get-bg); color: var(--get); }
+  .method-badge.POST { background: var(--post-bg); color: var(--post); }
+  .method-badge.PUT { background: var(--put-bg); color: var(--put); }
+  .method-badge.DELETE { background: var(--delete-bg); color: var(--delete); }
+  .method-badge.WSS { background: var(--ws-bg); color: var(--ws); }
+  .method-badge.CALL { background: var(--post-bg); color: var(--post); }
+
+  .endpoint-info { flex: 1; min-width: 0; }
+  .endpoint-path {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .endpoint-desc {
+    font-size: 12px;
+    color: var(--fg-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .endpoint-card .arrow {
+    color: var(--fg-muted);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  /* Detail view */
+  #detail-view {
+    display: none;
+    padding-bottom: 40px;
+  }
+  #detail-view.active { display: block; }
+  #list-view.hidden { display: none; }
+
+  .detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 16px 0 8px;
+    flex-wrap: wrap;
+  }
+  .detail-header .method-badge { font-size: 12px; padding: 5px 10px; min-width: 50px; }
+  .detail-url {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--fg);
+    word-break: break-all;
+    flex: 1;
+    min-width: 0;
+    padding-top: 4px;
+    line-height: 1.6;
+  }
+  .detail-description {
+    font-size: 14px;
+    color: var(--fg-dim);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    margin-bottom: 8px;
+    margin-top: 20px;
+  }
+
+  .param-group {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .param-row {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .param-row:last-child { border-bottom: none; }
+  .param-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .param-name {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fg);
+  }
+  .param-type {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-muted);
+    background: var(--bg-input);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .param-required {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .param-desc {
+    font-size: 12px;
+    color: var(--fg-dim);
+  }
+  .param-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 7px 10px;
+    outline: none;
+  }
+  .param-input:focus { border-color: var(--accent); }
+
+  .send-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 13px;
+    margin-top: 20px;
+    cursor: pointer;
+    transition: opacity .1s;
+  }
+  .send-btn:hover { opacity: 0.9; }
+  .send-btn:active { opacity: 0.8; }
+  .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .send-btn .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    display: none;
+  }
+  .send-btn.loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Response */
+  .response-section { margin-top: 20px; }
+  .response-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .response-status {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .response-status.ok { background: var(--get-bg); color: var(--get); }
+  .response-status.err { background: var(--delete-bg); color: var(--delete); }
+  .response-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-muted);
+  }
+  .response-body {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .response-body pre {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--fg);
+  }
+
+  .note-box {
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--fg-dim);
+    line-height: 1.5;
+  }
+  .note-box strong { color: var(--fg); font-weight: 600; }
+
+  .copy-btn {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--fg-dim);
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    cursor: pointer;
+    margin-left: auto;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .json-key { color: var(--accent); }
+  .json-string { color: var(--get); }
+  .json-number { color: var(--ws); }
+  .json-bool { color: var(--put); }
+  .json-null { color: var(--fg-muted); }
+
+  .search-bar {
+    margin: 12px 0 4px;
+    position: relative;
+  }
+  .search-bar input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--fg);
+    font-family: var(--font-display);
+    font-size: 14px;
+    padding: 10px 12px 10px 36px;
+    outline: none;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar input::placeholder { color: var(--fg-muted); }
+  .search-bar .icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--fg-muted);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 12px;
+    margin: 8px 0 4px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    font-size: 11px;
+    color: var(--fg-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat strong { color: var(--fg-dim); font-weight: 600; }
+
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 0 24px;
+    margin-top: 32px;
+    font-size: 11px;
+    color: var(--fg-muted);
+    text-align: center;
+  }
+
+  @media (max-width: 600px) {
+    .server-group-header .server-url { display: none; }
+  }
+</style>
+
+<div class="app-header">
+  <button class="back-btn" id="backBtn" onclick="showList()">Retour</button>
+  <h1>Play<span>Us</span> API</h1>
+  <button class="auth-toggle" id="authToggle" onclick="toggleAuth()">
+    <span class="dot" id="authDot"></span>
+    Auth
+  </button>
+</div>
+
+<div id="auth-panel" hidden>
+  <div class="auth-panel">
+    <h3>Configuration d'authentification</h3>
+    <div class="auth-field">
+      <label>Firebase ID Token (Bearer)</label>
+      <textarea id="authToken" placeholder="eyJhbGciOiJSUzI1NiIs..." rows="3"></textarea>
+      <div class="auth-hint">Token obtenu via Firebase Auth (Google Sign-In). Utilisé pour les Cloud Functions et la Realtime DB.</div>
+    </div>
+    <div class="auth-field">
+      <label>Klipy API Key</label>
+      <input type="text" id="klipyKey" value="pk_live_3d1e94e8ebcdd1b4e465550b464754950c3b1addbf8c95f8037484726c92449d">
+      <div class="auth-hint">Clé API Klipy pour les endpoints GIF/media.</div>
+    </div>
+    <div class="auth-field">
+      <label>Cossistant Visitor ID</label>
+      <input type="text" id="cossVisitorId" placeholder="Identifiant visiteur Cossistant">
+      <div class="auth-hint">ID du visiteur pour l'API de support Cossistant.</div>
+    </div>
+  </div>
+</div>
+
+<div id="list-view">
+  <div class="search-bar">
+    <span class="icon">&#x1F50D;</span>
+    <input type="text" id="searchInput" placeholder="Chercher un endpoint..." oninput="filterEndpoints()">
+  </div>
+  <div class="stats-bar" id="statsBar"></div>
+  <div id="endpoint-groups"></div>
+  <div class="footer">
+    PlayUs v164 &middot; Extrait depuis base.apk &middot; Firebase project: playus-ds &middot; Region: europe-west1
+  </div>
+</div>
+
+<div id="detail-view">
+  <div id="detail-content"></div>
+</div>
+
+<script>
+const API = {
+  servers: {
+    firebase: {
+      name: "Firebase Cloud Functions",
+      baseUrl: "https://europe-west1-playus-ds.cloudfunctions.net",
+      auth: "bearer",
+      description: "Backend principal PlayUs — fonctions callable Firebase, region europe-west1, projet playus-ds"
+    },
+    klipy: {
+      name: "Klipy GIF API",
+      baseUrl: "https://api.klipy.com/api/v1",
+      auth: "klipy",
+      description: "Service de GIFs et médias intégré (Klipy)"
+    },
+    cossistant: {
+      name: "Cossistant AI Support",
+      baseUrl: "https://coss-ai-production.up.railway.app/v1",
+      auth: "cossistant",
+      description: "Chat de support IA (REST + WebSocket)"
+    },
+    static: {
+      name: "Contenu statique / CDN",
+      baseUrl: "",
+      auth: "none",
+      description: "Assets avatars, catalogue, shop, rewards, game bundles"
+    },
+    rtdb: {
+      name: "Firebase Realtime Database",
+      baseUrl: "https://playus-ds-default-rtdb.europe-west1.firebasedatabase.app",
+      auth: "bearer",
+      description: "Base de données temps réel Firebase"
+    }
+  },
+  endpoints: [
+    // ========== FIREBASE CLOUD FUNCTIONS ==========
+    {
+      server: "firebase", method: "CALL", path: "/createUser",
+      description: "Créer un nouvel utilisateur PlayUs",
+      params: [
+        { name: "language", type: "string", required: true, description: "Code langue (fr, en, de, it, es, tr)" }
+      ],
+      notes: "Cloud Function callable. Le body HTTP est {\"data\": {...params}}. Auth via Bearer token Firebase."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/createGroup",
+      description: "Créer un nouveau groupe de jeu",
+      params: [
+        { name: "groupName", type: "string", required: true, description: "Nom du groupe" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/joinGroupRequest",
+      description: "Demander à rejoindre un groupe (via code d'invitation ou ID)",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe ou code d'invitation" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/acceptGroupRequest",
+      description: "Accepter une demande d'adhésion au groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/leaveGroup",
+      description: "Quitter un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe à quitter" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/kickUser",
+      description: "Exclure un utilisateur du groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "targetUserId", type: "string", required: true, description: "ID de l'utilisateur à exclure" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/removeFromGroup",
+      description: "Retirer un membre du groupe avec option de blocage",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "blockUser", type: "boolean", required: false, description: "Bloquer l'utilisateur (empêcher de rejoindre à nouveau)" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/createShareLink",
+      description: "Générer un lien d'invitation pour un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+      ],
+      notes: "Retourne un InviteLink avec une URL de type https://playus.club/i/..."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/requestGame",
+      description: "Demander le lancement d'une partie dans un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/addGameScore",
+      description: "Soumettre un score de jeu",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "score", type: "number", required: true, description: "Score obtenu" },
+        { name: "gameId", type: "string", required: false, description: "ID du jeu" },
+        { name: "groupGameId", type: "string", required: false, description: "ID de la partie de groupe" },
+        { name: "attemptID", type: "string", required: false, description: "ID de la tentative (si tracking activé)" }
+      ],
+      notes: "Retourne AddGameScoreResult avec publicHighscoreStatus."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/trackGameAttempt",
+      description: "Enregistrer une tentative de jeu (anti-triche)",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "gameId", type: "string", required: false, description: "ID du jeu" }
+      ],
+      notes: "Retourne GameAttemptTrackingResponse avec trackingEnabled et attemptID."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/claimSeasonRewards",
+      description: "Réclamer les récompenses de saison",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "seasonId", type: "string", required: false, description: "ID de la saison" }
+      ],
+      notes: "Retourne SeasonRewardsClaimResult avec claimedAssetIds."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/purchaseCoins",
+      description: "Acheter des coins (monnaie in-app)",
+      params: [
+        { name: "productID", type: "string", required: true, description: "ID du produit Google Play" },
+        { name: "purchaseToken", type: "string", required: true, description: "Token d'achat Google Play Billing" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/purchaseDice",
+      description: "Acheter des dés (tentatives supplémentaires)",
+      params: [
+        { name: "type", type: "string", required: true, description: "Type de dé (DiceProductType)" },
+        { name: "groupId", type: "string", required: false, description: "ID du groupe cible" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/purchaseShopItem",
+      description: "Acheter un article dans le shop avatar",
+      params: [
+        { name: "itemId", type: "string", required: true, description: "ID de l'article dans le shop" }
+      ],
+      notes: "Retourne PurchaseShopItemResult avec alreadyOwned."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getPublicProfile",
+      description: "Récupérer le profil public d'un utilisateur",
+      params: [
+        { name: "userID", type: "string", required: true, description: "ID de l'utilisateur" }
+      ],
+      notes: "Retourne PublicProfile avec id, displayName, avatar, badges, highscores."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getGlobalLeaderboardRank",
+      description: "Obtenir le classement global pour un jeu",
+      params: [
+        { name: "gameID", type: "string", required: true, description: "ID du jeu" }
+      ],
+      notes: "Retourne le rang dans le leaderboard mondial mensuel."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/syncPremiumPurchase",
+      description: "Synchroniser un achat premium (abonnement)",
+      params: [
+        { name: "purchaseToken", type: "string", required: true, description: "Token d'achat Google Play" }
+      ],
+      notes: "Abonnements: playus.premium.monthly."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/confirmTransfer",
+      description: "Confirmer un transfert de coins (cadeau)",
+      params: [
+        { name: "purchaseToken", type: "string", required: true, description: "Token de la transaction" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/confirmGroupAvatarUpload",
+      description: "Confirmer l'upload d'un avatar pour le groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "uploadUrl", type: "string", required: false, description: "URL de l'image uploadée" }
+      ]
+    },
+
+    // ========== KLIPY GIF API ==========
+    {
+      server: "klipy", method: "GET", path: "/gifs/trending",
+      description: "GIFs tendance",
+      params: [
+        { name: "limit", type: "number", required: false, description: "Nombre de résultats (défaut: 20)" },
+        { name: "offset", type: "number", required: false, description: "Offset pour pagination" }
+      ]
+    },
+    {
+      server: "klipy", method: "GET", path: "/gifs/categories",
+      description: "Liste des catégories de GIFs",
+      params: []
+    },
+    {
+      server: "klipy", method: "GET", path: "/gifs/search",
+      description: "Rechercher des GIFs",
+      params: [
+        { name: "q", type: "string", required: true, description: "Terme de recherche" },
+        { name: "limit", type: "number", required: false, description: "Nombre de résultats" },
+        { name: "offset", type: "number", required: false, description: "Offset pour pagination" }
+      ]
+    },
+    {
+      server: "klipy", method: "GET", path: "/gifs/recent/{customerId}",
+      description: "GIFs récemment utilisés par le client",
+      params: [
+        { name: "customerId", type: "string", required: true, description: "ID client Klipy (path param)", isPath: true }
+      ]
+    },
+    {
+      server: "klipy", method: "POST", path: "/gifs/view/{slug}",
+      description: "Enregistrer un affichage de GIF (analytics)",
+      params: [
+        { name: "slug", type: "string", required: true, description: "Slug du média (path param)", isPath: true },
+        { name: "customerId", type: "string", required: true, description: "ID client Klipy (body)" }
+      ]
+    },
+    {
+      server: "klipy", method: "POST", path: "/gifs/share/{slug}",
+      description: "Enregistrer un partage de GIF (analytics)",
+      params: [
+        { name: "slug", type: "string", required: true, description: "Slug du média (path param)", isPath: true },
+        { name: "customerId", type: "string", required: true, description: "ID client Klipy (body)" }
+      ]
+    },
+    {
+      server: "klipy", method: "POST", path: "/gifs/report/{slug}",
+      description: "Signaler un GIF inapproprié",
+      params: [
+        { name: "slug", type: "string", required: true, description: "Slug du média (path param)", isPath: true },
+        { name: "customerId", type: "string", required: true, description: "ID client Klipy (body)" },
+        { name: "reason", type: "string", required: false, description: "Raison du signalement" }
+      ]
+    },
+
+    // ========== COSSISTANT AI SUPPORT ==========
+    {
+      server: "cossistant", method: "POST", path: "/contacts/identify",
+      description: "Identifier/créer un contact visiteur",
+      params: [
+        { name: "email", type: "string", required: false, description: "Email du contact" },
+        { name: "name", type: "string", required: false, description: "Nom du contact" },
+        { name: "visitorId", type: "string", required: false, description: "ID visiteur existant" }
+      ],
+      notes: "Retourne un PublicContact avec ID et informations du visiteur."
+    },
+    {
+      server: "cossistant", method: "POST", path: "/conversations",
+      description: "Créer une nouvelle conversation de support",
+      params: [
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur" },
+        { name: "message", type: "string", required: false, description: "Message initial" }
+      ],
+      notes: "Retourne un objet Conversation avec son ID."
+    },
+    {
+      server: "cossistant", method: "GET", path: "/conversations",
+      description: "Lister les conversations du visiteur",
+      params: [
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur (query)" },
+        { name: "limit", type: "number", required: false, description: "Nombre max de résultats" },
+        { name: "cursor", type: "string", required: false, description: "Curseur de pagination" }
+      ]
+    },
+    {
+      server: "cossistant", method: "GET", path: "/conversations/{conversationId}/timeline",
+      description: "Récupérer la timeline d'une conversation",
+      params: [
+        { name: "conversationId", type: "string", required: true, description: "ID de la conversation (path)", isPath: true },
+        { name: "limit", type: "number", required: false, description: "Nombre de messages" },
+        { name: "cursor", type: "string", required: false, description: "Curseur de pagination" }
+      ],
+      notes: "Retourne des TimelineItem avec parts: Text, Image, File, Tool, Event, Reasoning, StepStart, Metadata, SourceUrl, SourceDocument."
+    },
+    {
+      server: "cossistant", method: "POST", path: "/conversations/{conversationId}/messages",
+      description: "Envoyer un message dans une conversation",
+      params: [
+        { name: "conversationId", type: "string", required: true, description: "ID de la conversation (path)", isPath: true },
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur" },
+        { name: "message", type: "string", required: true, description: "Contenu du message" }
+      ],
+      notes: "Retourne SendMessageResponse. Le traitement IA est notifié via WebSocket."
+    },
+    {
+      server: "cossistant", method: "POST", path: "/conversations/{conversationId}/seen",
+      description: "Marquer une conversation comme lue",
+      params: [
+        { name: "conversationId", type: "string", required: true, description: "ID de la conversation (path)", isPath: true },
+        { name: "latestInventoryUpdate", type: "string", required: false, description: "Timestamp du dernier message vu" }
+      ]
+    },
+    {
+      server: "cossistant", method: "POST", path: "/conversations/{conversationId}/typing",
+      description: "Signaler que le visiteur est en train d'écrire",
+      params: [
+        { name: "conversationId", type: "string", required: true, description: "ID de la conversation (path)", isPath: true },
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur" }
+      ]
+    },
+    {
+      server: "cossistant", method: "POST", path: "/conversations/{conversationId}/rating",
+      description: "Évaluer une conversation de support",
+      params: [
+        { name: "conversationId", type: "string", required: true, description: "ID de la conversation (path)", isPath: true },
+        { name: "rating", type: "number", required: true, description: "Note (1-5)" },
+        { name: "comment", type: "string", required: false, description: "Commentaire optionnel" }
+      ]
+    },
+    {
+      server: "cossistant", method: "POST", path: "/visitors/activity",
+      description: "Enregistrer l'activité du visiteur",
+      params: [
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur" },
+        { name: "activity", type: "string", required: true, description: "Type d'activité" }
+      ]
+    },
+    {
+      server: "cossistant", method: "POST", path: "/visitors/metadata",
+      description: "Mettre à jour les métadonnées du visiteur",
+      params: [
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur" },
+        { name: "metadata", type: "object", required: true, description: "Paires clé-valeur de métadonnées (JSON)" }
+      ]
+    },
+    {
+      server: "cossistant", method: "POST", path: "/visitors/context",
+      description: "Mettre à jour le contexte du visiteur",
+      params: [
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur" },
+        { name: "context", type: "object", required: true, description: "Données de contexte (JSON)" }
+      ]
+    },
+    {
+      server: "cossistant", method: "WSS", path: "/ws",
+      description: "WebSocket temps réel — événements de conversation",
+      params: [
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur (query param à la connexion)" }
+      ],
+      notes: "Événements reçus : ConversationCreated, ConversationUpdated, ConversationSeen, ConversationTyping, TimelineItemEvent, AIProcessingProgress, AIProcessingCompleted."
+    },
+    {
+      server: "cossistant", method: "POST", path: "/generate-upload-url",
+      description: "Générer une URL d'upload pour fichier/image",
+      params: [
+        { name: "contentType", type: "string", required: true, description: "Type MIME du fichier (image/jpeg, etc.)" },
+        { name: "visitorId", type: "string", required: true, description: "ID du visiteur" }
+      ],
+      notes: "Retourne GenerateUploadURLResponse avec uploadUrl."
+    },
+
+    // ========== STATIC/CDN ENDPOINTS ==========
+    {
+      server: "static", method: "GET",
+      path: "https://avatar.playus.club/assets/catalog/latest.json",
+      description: "Catalogue complet des assets avatar (composants, couches, couleurs)",
+      params: [],
+      notes: "JSON décrivant AvatarCatalog avec version, placements, visuals, images."
+    },
+    {
+      server: "static", method: "GET",
+      path: "https://avatar.playus.club/shop/latest.json",
+      description: "Configuration actuelle du shop avatar",
+      params: [],
+      notes: "JSON avec AvatarShop: articles disponibles, prix en coins, dates de validité."
+    },
+    {
+      server: "static", method: "GET",
+      path: "https://avatar.playus.club/rewards/season/{seasonId}",
+      description: "Récompenses de saison disponibles",
+      params: [
+        { name: "seasonId", type: "string", required: true, description: "ID de la saison (path)", isPath: true }
+      ],
+      notes: "JSON SeasonRewardsPayload avec version, récompenses et conditions."
+    },
+    {
+      server: "static", method: "GET",
+      path: "https://game.playus.club/{gameId}/bundle.json",
+      description: "Manifest d'un game bundle (config du jeu)",
+      params: [
+        { name: "gameId", type: "string", required: true, description: "ID du jeu (path)", isPath: true }
+      ],
+      notes: "GameBundleManifestEnvelope avec schemaVersion, payload, assets et signature."
+    },
+    {
+      server: "static", method: "GET",
+      path: "https://leaderboards.playus.club/{gameId}",
+      description: "Leaderboard global mensuel d'un jeu",
+      params: [
+        { name: "gameId", type: "string", required: true, description: "ID du jeu (path)", isPath: true }
+      ],
+      notes: "GlobalLeaderboardSnapshot avec classement, scores et avatars."
+    },
+    {
+      server: "static", method: "GET",
+      path: "https://api.playus.club/public-profiles/{userId}",
+      description: "Profil public d'un utilisateur (endpoint REST statique)",
+      params: [
+        { name: "userId", type: "string", required: true, description: "ID utilisateur (path)", isPath: true }
+      ],
+      notes: "PublicProfile avec displayName, avatar, badges, highscores."
+    },
+    {
+      server: "static", method: "GET",
+      path: "https://groups.playus.club/{groupId}",
+      description: "Informations publiques d'un groupe",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe (path)", isPath: true }
+      ]
+    },
+
+    // ========== FIREBASE REALTIME DB ==========
+    {
+      server: "rtdb", method: "GET",
+      path: "/playus-games-v1.json",
+      description: "Liste de tous les jeux disponibles",
+      params: [
+        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
+      ],
+      notes: "Noeud racine des configurations de jeux. Accès via REST API Firebase."
+    },
+    {
+      server: "rtdb", method: "GET",
+      path: "/playus-database/groups/{groupId}.json",
+      description: "Données d'un groupe (état, membres, scores)",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe (path)", isPath: true },
+        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
+      ],
+      notes: "PlayusGroup avec id, state, members, games, scores. Les listeners SSE sont aussi supportés."
+    },
+    {
+      server: "rtdb", method: "GET",
+      path: "/playus-avatar-assets.json",
+      description: "Index des assets d'avatars disponibles",
+      params: [
+        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
+      ]
+    }
+  ]
+};
+
+function getAuthHeaders(server) {
+  const headers = { "Content-Type": "application/json" };
+  const srv = API.servers[server];
+  if (srv.auth === "bearer") {
+    const token = document.getElementById("authToken").value.trim();
+    if (token) headers["Authorization"] = "Bearer " + token;
+  } else if (srv.auth === "klipy") {
+    const key = document.getElementById("klipyKey").value.trim();
+    if (key) headers["X-API-Key"] = key;
+    headers["Origin"] = "https://playus.club";
+  }
+  return headers;
+}
+
+function buildUrl(endpoint) {
+  const srv = API.servers[endpoint.server];
+  let path = endpoint.path;
+  if (path.startsWith("http")) return path;
+  return srv.baseUrl + path;
+}
+
+function toggleAuth() {
+  const panel = document.getElementById("auth-panel");
+  panel.hidden = !panel.hidden;
+}
+
+function showList() {
+  document.getElementById("list-view").classList.remove("hidden");
+  document.getElementById("detail-view").classList.remove("active");
+  document.getElementById("backBtn").style.display = "none";
+  window.scrollTo(0, 0);
+}
+
+function showDetail(idx) {
+  const ep = API.endpoints[idx];
+  const srv = API.servers[ep.server];
+  document.getElementById("list-view").classList.add("hidden");
+  document.getElementById("detail-view").classList.add("active");
+  document.getElementById("backBtn").style.display = "block";
+
+  const methodClass = ep.method === "WSS" ? "WSS" : ep.method === "CALL" ? "CALL" : ep.method;
+  const fullUrl = buildUrl(ep);
+
+  let paramsHtml = "";
+  if (ep.params.length > 0) {
+    paramsHtml = `<div class="section-title">Paramètres</div><div class="param-group">`;
+    ep.params.forEach((p, i) => {
+      const reqBadge = p.required ? `<span class="param-required">requis</span>` : "";
+      const inputType = p.type === "number" ? "number" : "text";
+      paramsHtml += `
+        <div class="param-row">
+          <div class="param-meta">
+            <span class="param-name">${p.name}</span>
+            <span class="param-type">${p.type}</span>
+            ${reqBadge}
+          </div>
+          <div class="param-desc">${p.description}</div>
+          <input class="param-input" type="${inputType}" id="param-${idx}-${i}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">
+        </div>`;
+    });
+    paramsHtml += `</div>`;
+  }
+
+  let notesHtml = "";
+  if (ep.notes) {
+    notesHtml = `<div class="note-box"><strong>Note :</strong> ${ep.notes}</div>`;
+  }
+
+  const isFirebaseCall = ep.server === "firebase";
+  const sendLabel = ep.method === "WSS" ? "Tester la connexion" : "Envoyer la requête";
+
+  document.getElementById("detail-content").innerHTML = `
+    <div class="detail-header">
+      <span class="method-badge ${methodClass}">${ep.method}</span>
+      <div class="detail-url">${fullUrl}</div>
+    </div>
+    <div class="detail-description">${ep.description}</div>
+    <div class="note-box">
+      <strong>Serveur :</strong> ${srv.name}<br>
+      <strong>Auth :</strong> ${srv.auth === "bearer" ? "Firebase ID Token (Bearer)" : srv.auth === "klipy" ? "API Key Klipy (X-API-Key)" : srv.auth === "cossistant" ? "Visitor ID" : "Aucune"}
+      ${isFirebaseCall ? "<br><strong>Format :</strong> POST avec body {\"data\": {...}}" : ""}
+    </div>
+    ${paramsHtml}
+    ${notesHtml}
+    <button class="send-btn" id="sendBtn" onclick="sendRequest(${idx})">
+      <span class="spinner"></span>
+      ${sendLabel}
+    </button>
+    <div class="section-title">cURL</div>
+    <div class="response-body" style="position:relative">
+      <button class="copy-btn" onclick="copyCurl(${idx})" style="position:absolute;top:8px;right:8px">Copier</button>
+      <pre id="curl-preview">${buildCurl(ep)}</pre>
+    </div>
+    <div class="response-section" id="response-section" hidden>
+      <div class="response-header">
+        <div class="section-title" style="margin:0">Réponse</div>
+        <span class="response-status" id="resp-status"></span>
+        <span class="response-time" id="resp-time"></span>
+        <button class="copy-btn" onclick="copyResponse()">Copier</button>
+      </div>
+      <div class="response-body">
+        <pre id="resp-body"></pre>
+      </div>
+    </div>`;
+
+  window.scrollTo(0, 0);
+  updateCurlPreview(idx);
+
+  document.querySelectorAll(`[id^="param-${idx}-"]`).forEach(input => {
+    input.addEventListener("input", () => updateCurlPreview(idx));
+  });
+}
+
+function gatherParams(idx) {
+  const ep = API.endpoints[idx];
+  const result = { path: {}, query: {}, body: {} };
+  ep.params.forEach((p, i) => {
+    const el = document.getElementById(`param-${idx}-${i}`);
+    if (!el) return;
+    let val = el.value.trim();
+    if (!val) return;
+    if (p.type === "number") val = Number(val);
+    if (p.type === "boolean") val = val === "true";
+    if (p.type === "object") { try { val = JSON.parse(val); } catch(e) {} }
+    if (p.isPath) result.path[p.name] = val;
+    else if (ep.method === "GET" || p.name === "auth") result.query[p.name] = val;
+    else result.body[p.name] = val;
+  });
+  return result;
+}
+
+function buildCurl(ep) {
+  const srv = API.servers[ep.server];
+  let url = buildUrl(ep);
+  const isCall = ep.server === "firebase";
+  const method = isCall ? "POST" : ep.method;
+  if (method === "WSS") return `wscat -c "${url}"`;
+
+  let parts = [`curl -X ${method}`];
+  if (srv.auth === "bearer") parts.push(`  -H "Authorization: Bearer <FIREBASE_TOKEN>"`);
+  if (srv.auth === "klipy") {
+    parts.push(`  -H "X-API-Key: <KLIPY_KEY>"`);
+    parts.push(`  -H "Origin: https://playus.club"`);
+  }
+  if (method === "POST" || isCall) parts.push(`  -H "Content-Type: application/json"`);
+
+  let bodyParams = {};
+  ep.params.filter(p => !p.isPath && (method === "POST" || isCall) && p.name !== "auth").forEach(p => {
+    bodyParams[p.name] = `<${p.name}>`;
+  });
+  if (Object.keys(bodyParams).length > 0) {
+    const data = isCall ? { data: bodyParams } : bodyParams;
+    parts.push(`  -d '${JSON.stringify(data, null, 2)}'`);
+  }
+  parts.push(`  "${url}"`);
+  return parts.join(" \\\n");
+}
+
+function updateCurlPreview(idx) {
+  const ep = API.endpoints[idx];
+  const srv = API.servers[ep.server];
+  const params = gatherParams(idx);
+  const isCall = ep.server === "firebase";
+  const method = isCall ? "POST" : ep.method;
+  let url = buildUrl(ep);
+
+  Object.entries(params.path).forEach(([k, v]) => {
+    url = url.replace(`{${k}}`, encodeURIComponent(v));
+  });
+  const qp = new URLSearchParams();
+  Object.entries(params.query).forEach(([k, v]) => qp.set(k, v));
+  const qs = qp.toString();
+  if (qs) url += "?" + qs;
+
+  if (method === "WSS") {
+    document.getElementById("curl-preview").textContent = `wscat -c "${url}${qs ? "?" + qs : ""}"`;
+    return;
+  }
+
+  let parts = [`curl -X ${method}`];
+  if (srv.auth === "bearer") {
+    const token = document.getElementById("authToken").value.trim();
+    parts.push(`  -H "Authorization: Bearer ${token || "<FIREBASE_TOKEN>"}"`);
+  }
+  if (srv.auth === "klipy") {
+    const key = document.getElementById("klipyKey").value.trim();
+    parts.push(`  -H "X-API-Key: ${key || "<KLIPY_KEY>"}"`);
+    parts.push(`  -H "Origin: https://playus.club"`);
+  }
+  if (method === "POST" || isCall) parts.push(`  -H "Content-Type: application/json"`);
+
+  if (Object.keys(params.body).length > 0) {
+    const data = isCall ? { data: params.body } : params.body;
+    parts.push(`  -d '${JSON.stringify(data, null, 2)}'`);
+  }
+  parts.push(`  "${url}"`);
+  document.getElementById("curl-preview").textContent = parts.join(" \\\n");
+}
+
+async function sendRequest(idx) {
+  const ep = API.endpoints[idx];
+  const srv = API.servers[ep.server];
+  const params = gatherParams(idx);
+  const isCall = ep.server === "firebase";
+  const httpMethod = isCall ? "POST" : ep.method;
+
+  if (httpMethod === "WSS") {
+    showResponse(null, "WebSocket : utilisez wscat ou un client WS pour tester.", 0);
+    return;
+  }
+
+  const btn = document.getElementById("sendBtn");
+  btn.classList.add("loading");
+  btn.disabled = true;
+
+  let url = buildUrl(ep);
+  Object.entries(params.path).forEach(([k, v]) => {
+    url = url.replace(`{${k}}`, encodeURIComponent(v));
+  });
+  const qp = new URLSearchParams();
+  Object.entries(params.query).forEach(([k, v]) => qp.set(k, v));
+  const qs = qp.toString();
+  if (qs) url += "?" + qs;
+
+  const headers = getAuthHeaders(ep.server);
+  const fetchOpts = { method: httpMethod, headers };
+  if (httpMethod === "POST" || httpMethod === "PUT" || httpMethod === "PATCH") {
+    const bodyData = isCall ? { data: params.body } : params.body;
+    if (Object.keys(params.body).length > 0 || isCall) {
+      fetchOpts.body = JSON.stringify(bodyData);
+    }
+  }
+
+  const t0 = performance.now();
+  try {
+    const res = await fetch(url, fetchOpts);
+    const dt = Math.round(performance.now() - t0);
+    let body;
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("json")) {
+      body = await res.json();
+      body = JSON.stringify(body, null, 2);
+    } else {
+      body = await res.text();
+    }
+    showResponse(res.status, body, dt);
+  } catch (e) {
+    const dt = Math.round(performance.now() - t0);
+    showResponse(0, "Erreur réseau : " + e.message + "\n\nNote : Les requêtes cross-origin peuvent être bloquées par CORS. Utilisez le cURL généré ci-dessus depuis un terminal.", dt);
+  }
+  btn.classList.remove("loading");
+  btn.disabled = false;
+}
+
+function showResponse(status, body, ms) {
+  const section = document.getElementById("response-section");
+  section.hidden = false;
+  const statusEl = document.getElementById("resp-status");
+  const timeEl = document.getElementById("resp-time");
+  const bodyEl = document.getElementById("resp-body");
+
+  if (status === null) {
+    statusEl.textContent = "INFO";
+    statusEl.className = "response-status";
+  } else if (status >= 200 && status < 300) {
+    statusEl.textContent = status;
+    statusEl.className = "response-status ok";
+  } else {
+    statusEl.textContent = status || "ERR";
+    statusEl.className = "response-status err";
+  }
+  timeEl.textContent = ms + "ms";
+
+  try {
+    const parsed = JSON.parse(body);
+    bodyEl.innerHTML = syntaxHighlight(JSON.stringify(parsed, null, 2));
+  } catch (e) {
+    bodyEl.textContent = body;
+  }
+}
+
+function syntaxHighlight(json) {
+  return json.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    function (match) {
+      let cls = "json-number";
+      if (/^"/.test(match)) {
+        cls = /:$/.test(match) ? "json-key" : "json-string";
+      } else if (/true|false/.test(match)) {
+        cls = "json-bool";
+      } else if (/null/.test(match)) {
+        cls = "json-null";
+      }
+      return `<span class="${cls}">${match}</span>`;
+    });
+}
+
+function copyCurl(idx) {
+  const text = document.getElementById("curl-preview").textContent;
+  try { navigator.clipboard.writeText(text); } catch(e) {}
+}
+
+function copyResponse() {
+  const text = document.getElementById("resp-body").textContent;
+  try { navigator.clipboard.writeText(text); } catch(e) {}
+}
+
+function filterEndpoints() {
+  const q = document.getElementById("searchInput").value.toLowerCase().trim();
+  document.querySelectorAll(".endpoint-card").forEach(card => {
+    const text = (card.dataset.path + " " + card.dataset.desc).toLowerCase();
+    card.hidden = q && !text.includes(q);
+  });
+  document.querySelectorAll(".server-group").forEach(group => {
+    const visible = group.querySelectorAll(".endpoint-card:not([hidden])").length;
+    group.hidden = q && visible === 0;
+  });
+}
+
+function render() {
+  const container = document.getElementById("endpoint-groups");
+  const serverOrder = ["firebase", "klipy", "cossistant", "static", "rtdb"];
+  let totalEndpoints = 0;
+  const serverCounts = {};
+
+  serverOrder.forEach(skey => {
+    const srv = API.servers[skey];
+    const eps = API.endpoints.map((ep, i) => ({ ...ep, _idx: i })).filter(ep => ep.server === skey);
+    if (eps.length === 0) return;
+    serverCounts[skey] = eps.length;
+    totalEndpoints += eps.length;
+
+    const group = document.createElement("div");
+    group.className = "server-group";
+    group.innerHTML = `
+      <div class="server-group-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <h2>${srv.name} <span style="font-weight:400;color:var(--fg-muted)">(${eps.length})</span></h2>
+        <span class="server-url">${srv.baseUrl || "Multiple"}</span>
+        <span class="chevron">&#9660;</span>
+      </div>
+      <div class="endpoint-list">
+        ${eps.map(ep => `
+          <div class="endpoint-card" onclick="showDetail(${ep._idx})" data-path="${ep.path}" data-desc="${ep.description}">
+            <span class="method-badge ${ep.method}">${ep.method}</span>
+            <div class="endpoint-info">
+              <div class="endpoint-path">${ep.path}</div>
+              <div class="endpoint-desc">${ep.description}</div>
+            </div>
+            <span class="arrow">&#8250;</span>
+          </div>
+        `).join("")}
+      </div>`;
+    container.appendChild(group);
+  });
+
+  document.getElementById("statsBar").innerHTML = `
+    <span class="stat"><strong>${totalEndpoints}</strong> endpoints</span>
+    <span class="stat"><strong>${Object.keys(API.servers).length}</strong> serveurs</span>
+    <span class="stat"><strong>${serverCounts.firebase || 0}</strong> Cloud Functions</span>
+  `;
+
+  updateAuthDot();
+}
+
+function updateAuthDot() {
+  const token = document.getElementById("authToken").value.trim();
+  const dot = document.getElementById("authDot");
+  dot.className = token ? "dot ok" : "dot";
+}
+
+document.getElementById("authToken").addEventListener("input", updateAuthDot);
+
+try {
+  const saved = localStorage.getItem("playus_auth");
+  if (saved) {
+    const data = JSON.parse(saved);
+    if (data.token) document.getElementById("authToken").value = data.token;
+    if (data.klipyKey) document.getElementById("klipyKey").value = data.klipyKey;
+    if (data.cossVisitorId) document.getElementById("cossVisitorId").value = data.cossVisitorId;
+  }
+} catch(e) {}
+
+setInterval(() => {
+  try {
+    localStorage.setItem("playus_auth", JSON.stringify({
+      token: document.getElementById("authToken").value,
+      klipyKey: document.getElementById("klipyKey").value,
+      cossVisitorId: document.getElementById("cossVisitorId").value
+    }));
+  } catch(e) {}
+}, 3000);
+
+render();
+</script>
