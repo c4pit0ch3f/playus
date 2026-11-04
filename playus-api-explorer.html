@@ -1652,21 +1652,21 @@ const API = {
       server: "firebase", method: "CALL", path: "/joinGroupRequest",
       description: "Demander à rejoindre un groupe (via code d'invitation ou ID)",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe ou code d'invitation" }
+        { name: "groupId", type: "string", required: true, description: "ID du groupe ou code d'invitation" }
       ]
     },
     {
       server: "firebase", method: "CALL", path: "/acceptGroupRequest",
       description: "Accepter une demande d'adhésion au groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" }
       ]
     },
     {
       server: "firebase", method: "CALL", path: "/kickUser",
       description: "Exclure un utilisateur du groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
         { name: "targetUserId", type: "string", required: true, description: "ID de l'utilisateur à exclure" }
       ]
     },
@@ -1674,7 +1674,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/createShareLink",
       description: "Générer un lien d'invitation pour un groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" }
       ],
       notes: "Retourne un InviteLink avec une URL de type https://playus.club/i/..."
     },
@@ -1682,18 +1682,18 @@ const API = {
       server: "firebase", method: "CALL", path: "/requestGame",
       description: "Demander le lancement d'une partie dans un groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" }
       ]
     },
     {
       server: "firebase", method: "CALL", path: "/addGameScore",
       description: "Soumettre un score de jeu",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
         { name: "score", type: "number", required: true, description: "Score obtenu" },
         { name: "gameId", type: "string", required: false, description: "ID du jeu" },
         { name: "groupGameId", type: "string", required: false, description: "ID de la partie de groupe" },
-        { name: "attemptID", type: "string", required: false, description: "ID de la tentative (si tracking activé)" }
+        { name: "attemptId", type: "string", required: false, description: "ID de la tentative (si tracking activé)" }
       ],
       notes: "Retourne AddGameScoreResult avec publicHighscoreStatus."
     },
@@ -1701,7 +1701,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/trackGameAttempt",
       description: "Enregistrer une tentative de jeu (anti-triche)",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
         { name: "gameId", type: "string", required: false, description: "ID du jeu" }
       ],
       notes: "Retourne GameAttemptTrackingResponse avec trackingEnabled et attemptID."
@@ -1710,7 +1710,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/claimSeasonRewards",
       description: "Réclamer les récompenses de saison",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
         { name: "seasonId", type: "string", required: false, description: "ID de la saison" }
       ],
       notes: "Retourne SeasonRewardsClaimResult avec claimedAssetIds."
@@ -1719,7 +1719,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/purchaseCoins",
       description: "Acheter des coins (monnaie in-app)",
       params: [
-        { name: "productID", type: "string", required: true, description: "ID du produit Google Play" },
+        { name: "productId", type: "string", required: true, description: "ID du produit Google Play" },
         { name: "purchaseToken", type: "string", required: true, description: "Token d'achat Google Play Billing" }
       ]
     },
@@ -1743,7 +1743,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/getPublicProfile",
       description: "Récupérer le profil public d'un utilisateur",
       params: [
-        { name: "userID", type: "string", required: true, description: "ID de l'utilisateur" }
+        { name: "userId", type: "string", required: true, description: "ID de l'utilisateur" }
       ],
       notes: "Retourne PublicProfile avec id, displayName, avatar, badges, highscores."
     },
@@ -1751,7 +1751,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/getGlobalLeaderboardRank",
       description: "Obtenir le classement global pour un jeu",
       params: [
-        { name: "gameID", type: "string", required: true, description: "ID du jeu" }
+        { name: "gameId", type: "string", required: true, description: "ID du jeu" }
       ],
       notes: "Retourne le rang dans le leaderboard mondial mensuel."
     },
@@ -1767,7 +1767,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/confirmGroupAvatarUpload",
       description: "Confirmer l'upload d'un avatar pour le groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
         { name: "uploadUrl", type: "string", required: false, description: "URL de l'image uploadée" }
       ]
     },
@@ -2164,8 +2164,8 @@ const API = {
       server: "firebase", method: "CALL", path: "/setMemberMuted",
       description: "Muter/démuter un membre du groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
-        { name: "targetUserID", type: "string", required: true, description: "UID du membre" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
+        { name: "targetUserId", type: "string", required: true, description: "UID du membre" },
         { name: "muted", type: "boolean", required: true, description: "true = muter, false = démuter" }
       ]
     },
@@ -2173,7 +2173,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/updateGroupProfileName",
       description: "Renommer son nom affiché dans un groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
         { name: "name", type: "string", required: true, description: "Nouveau nom de profil" }
       ]
     },
@@ -2181,8 +2181,8 @@ const API = {
       server: "firebase", method: "CALL", path: "/setMemberBlocked",
       description: "Bloquer/débloquer un membre du groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
-        { name: "targetUserID", type: "string", required: true, description: "UID du membre" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
+        { name: "targetUserId", type: "string", required: true, description: "UID du membre" },
         { name: "blocked", type: "boolean", required: true, description: "true = bloquer, false = débloquer" }
       ]
     },
@@ -2190,7 +2190,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/reactToChat",
       description: "Réagir à un message de chat (emoji reaction)",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
         { name: "messageId", type: "string", required: true, description: "ID du message" },
         { name: "reaction", type: "string", required: true, description: "Emoji de réaction" }
       ]
@@ -2703,45 +2703,54 @@ const SOURCE_LABELS = { firebase: "CF", firestore: "Firestore", klipy: "Klipy", 
 
 function buildGameActionWidget() {
   return `
-    <details class="action-widget" id="game-action-widget">
-      <summary class="action-widget-title" style="cursor:pointer">Simuler une partie</summary>
-      <div style="padding-top:8px">
-        <div class="aw-row">
-          <div class="aw-label">Groupe</div>
-          <select class="aw-select" id="aw-group" onchange="awGroupChanged()">
-            <option value="">Chargement...</option>
-          </select>
-        </div>
-        <div class="aw-row" id="aw-gg-row" hidden>
-          <div class="aw-label">Partie (GroupGame)</div>
-          <select class="aw-select" id="aw-gg" onchange="awGGChanged()">
-            <option value="">—</option>
-          </select>
-          <div class="aw-hint" id="aw-gg-hint"></div>
-        </div>
-        <div class="aw-row" id="aw-game-row" hidden>
-          <div class="aw-label">Jeu du jour</div>
-          <div class="aw-game-info" id="aw-game-info">—</div>
-        </div>
-        <div id="aw-params-section" hidden>
-          <hr class="aw-divider">
-          <div id="aw-dynamic-params"></div>
-          <hr class="aw-divider">
-          <div class="aw-checkbox-row">
-            <input type="checkbox" id="aw-trial"><label for="aw-trial">Essai libre (ne compte pas)</label>
-          </div>
-          <div class="aw-checkbox-row">
-            <input type="checkbox" id="aw-bonus"><label for="aw-bonus">Tentative bonus (pub / dé)</label>
-          </div>
-          <div class="aw-checkbox-row">
-            <input type="checkbox" id="aw-skip-track" checked><label for="aw-skip-track">Appeler trackGameAttempt avant</label>
-          </div>
-          <hr class="aw-divider">
-          <button class="aw-send-btn" id="aw-send-btn" onclick="runGameAction()" disabled>Lancer la simulation</button>
-        </div>
-        <div class="aw-log" id="aw-log" hidden></div>
+    <div class="detail-header">
+      <span class="method-badge CALL">SIM</span>
+      <span class="source-badge" style="margin-top:4px">Action</span>
+      <div class="detail-url">trackGameAttempt + addGameScore</div>
+    </div>
+    <div class="detail-description">Simuler une partie complète : sélectionnez un groupe, une partie existante, renseignez un score et les paramètres du jeu, puis lancez la séquence trackGameAttempt → addGameScore.</div>
+    <div class="note-box">
+      <strong>Flow :</strong> 1. Choisir groupe → 2. Choisir partie (GroupGame) → 3. Renseigner score et params → 4. Envoyer
+    </div>
+    <div style="margin-top:16px">
+      <div class="aw-row">
+        <div class="aw-label">Groupe</div>
+        <select class="aw-select" id="aw-group" onchange="awGroupChanged()">
+          <option value="">Chargement...</option>
+        </select>
       </div>
-    </details>`;
+      <div class="aw-row" id="aw-gg-row" hidden>
+        <div class="aw-label">Partie (GroupGame)</div>
+        <select class="aw-select" id="aw-gg" onchange="awGGChanged()">
+          <option value="">—</option>
+        </select>
+        <div class="aw-hint" id="aw-gg-hint"></div>
+      </div>
+      <div class="aw-row" id="aw-game-row" hidden>
+        <div class="aw-label">Jeu du jour</div>
+        <div class="aw-game-info" id="aw-game-info">—</div>
+      </div>
+      <div id="aw-params-section" hidden>
+        <hr class="aw-divider">
+        <div id="aw-dynamic-params"></div>
+        <hr class="aw-divider">
+        <div class="aw-checkbox-row">
+          <input type="checkbox" id="aw-trial"><label for="aw-trial">Essai libre (ne compte pas)</label>
+        </div>
+        <div class="aw-checkbox-row">
+          <input type="checkbox" id="aw-bonus"><label for="aw-bonus">Tentative bonus (pub / dé)</label>
+        </div>
+        <div class="aw-checkbox-row">
+          <input type="checkbox" id="aw-skip-track" checked><label for="aw-skip-track">Appeler trackGameAttempt avant</label>
+        </div>
+        <hr class="aw-divider">
+        <button class="send-btn" id="aw-send-btn" onclick="runGameAction()" disabled>
+          <span class="spinner"></span>
+          Lancer la simulation
+        </button>
+      </div>
+      <div class="aw-log" id="aw-log" hidden></div>
+    </div>`;
 }
 
 let _awGroupGame = null;
@@ -2926,7 +2935,7 @@ async function runGameAction() {
   const groupGameId = _awGroupGame.id;
   const doTrack = document.getElementById('aw-skip-track').checked;
 
-  const scoreParams = { groupID: groupId };
+  const scoreParams = { groupId: groupId };
   if (gameId) scoreParams.gameId = gameId;
   if (groupGameId) scoreParams.groupGameId = groupGameId;
 
@@ -2948,7 +2957,7 @@ async function runGameAction() {
   if (doTrack) {
     addLog('step-info', '1. trackGameAttempt...');
     try {
-      const trackParams = { groupID: groupId };
+      const trackParams = { groupId: groupId };
       if (gameId) trackParams.gameId = gameId;
       if (fbFunctions) {
         const callable = fbFunctions.httpsCallable('trackGameAttempt');
@@ -2974,7 +2983,7 @@ async function runGameAction() {
     addLog('step-info', '1. trackGameAttempt — ignoré');
   }
 
-  if (attemptID) scoreParams.attemptID = attemptID;
+  if (attemptID) scoreParams.attemptId = attemptID;
 
   addLog('step-info', '2. addGameScore...');
   addLog('step-info', '   Params : ' + JSON.stringify(scoreParams));
@@ -3001,9 +3010,36 @@ async function runGameAction() {
   btn.disabled = false;
 }
 
+function showSimulation() {
+  if (isDesktopLayout()) {
+    document.querySelectorAll(".endpoint-card.selected").forEach(c => c.classList.remove("selected"));
+    document.getElementById('sim-card').classList.add('selected');
+    document.getElementById("detail-view").scrollTo(0, 0);
+  } else {
+    document.getElementById("list-view").classList.add("hidden");
+    document.getElementById("detail-view").classList.add("active");
+    document.getElementById("backBtn").style.display = "block";
+  }
+  document.getElementById("detail-content").innerHTML = buildGameActionWidget();
+  awInitGroups();
+}
+
 function render() {
   const container = document.getElementById("endpoint-groups");
   let totalEndpoints = 0;
+
+  const simCard = document.createElement('div');
+  simCard.innerHTML = `
+    <div class="endpoint-card" id="sim-card" onclick="showSimulation()" style="border:2px solid var(--accent);margin-bottom:12px">
+      <span class="method-badge CALL">SIM</span>
+      <span class="source-badge">Action</span>
+      <div class="endpoint-info">
+        <div class="endpoint-desc">Simuler une partie</div>
+        <div class="endpoint-path">trackGameAttempt + addGameScore</div>
+      </div>
+      <span class="arrow">&#8250;</span>
+    </div>`;
+  container.appendChild(simCard.firstElementChild);
 
   SECTIONS.forEach(sec => {
     const eps = API.endpoints.map((ep, i) => ({ ...ep, _idx: i }))
@@ -3038,11 +3074,6 @@ function render() {
             </div>`;
         }).join("")}
       </div>`;
-    if (sec.key === 'gameplay') {
-      const widgetDiv = document.createElement('div');
-      widgetDiv.innerHTML = buildGameActionWidget();
-      group.querySelector('.endpoint-list').before(widgetDiv.firstElementChild);
-    }
     container.appendChild(group);
   });
 
@@ -3052,7 +3083,6 @@ function render() {
   `;
 
   updateAuthDot();
-  awInitGroups();
 }
 
 function updateAuthDot() {
