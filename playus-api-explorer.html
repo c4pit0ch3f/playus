@@ -1158,7 +1158,7 @@ const API = {
       name: "Firebase Realtime Database",
       baseUrl: "https://playus-ds-default-rtdb.europe-west1.firebasedatabase.app",
       auth: "bearer",
-      description: "Base de données temps réel Firebase"
+      description: "Base de données temps réel — accès direct bloqué par les security rules. Toutes les données passent par les Cloud Functions callables ci-dessus."
     }
   },
   endpoints: [
@@ -1556,62 +1556,62 @@ const API = {
       ]
     },
 
-    // ========== FIREBASE REALTIME DB ==========
+    // ========== CLOUD FUNCTIONS (manquantes du premier scan) ==========
     {
-      server: "rtdb", method: "GET",
-      path: "/playus-database/users/{uid}.json",
-      description: "Mon profil utilisateur complet (groupes, coins, avatar, paramètres)",
-      params: [
-        { name: "uid", type: "string", required: true, description: "Firebase UID (affiché après connexion)", isPath: true },
-        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
-      ],
-      notes: "Retourne l'objet utilisateur complet : groups (liste des groupes avec rôle), coins, avatar, displayName, language, premium, etc. C'est le endpoint principal pour connaître ses groupes."
+      server: "firebase", method: "CALL", path: "/getUserData",
+      description: "Récupérer son profil complet (groupes, coins, avatar, paramètres)",
+      params: [],
+      notes: "Retourne l'objet utilisateur complet : groups, coins, avatar, displayName, language, premium. C'est LA fonction pour connaître ses groupes et son profil. Aucun paramètre requis — le backend utilise auth.uid."
     },
     {
-      server: "rtdb", method: "GET",
-      path: "/playus-database/users/{uid}/groups.json",
-      description: "Mes groupes (sous-noeud groupes uniquement)",
+      server: "firebase", method: "CALL", path: "/sendChat",
+      description: "Envoyer un message dans le chat d'un groupe",
       params: [
-        { name: "uid", type: "string", required: true, description: "Firebase UID", isPath: true },
-        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
+        { name: "message", type: "string", required: true, description: "Contenu du message" }
       ],
-      notes: "Retourne uniquement la map des groupes de l'utilisateur avec les IDs et rôles."
+      notes: "Envoie un message de chat dans le groupe. Le backend associe automatiquement l'expéditeur via auth.uid."
     },
     {
-      server: "rtdb", method: "GET",
-      path: "/playus-database/groups/{groupId}.json",
-      description: "Données d'un groupe (état, membres, scores)",
+      server: "firebase", method: "CALL", path: "/toggleAdmin",
+      description: "Basculer le rôle admin d'un membre",
       params: [
-        { name: "groupId", type: "string", required: true, description: "ID du groupe (path)", isPath: true },
-        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
-      ],
-      notes: "PlayusGroup avec id, state, members, games, scores. Les listeners SSE sont aussi supportés."
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "targetUserID", type: "string", required: true, description: "UID du membre à promouvoir/rétrograder" }
+      ]
     },
     {
-      server: "rtdb", method: "GET",
-      path: "/playus-database/groups/{groupId}/members.json",
-      description: "Liste des membres d'un groupe",
+      server: "firebase", method: "CALL", path: "/setMemberMuted",
+      description: "Muter/démuter un membre du groupe",
       params: [
-        { name: "groupId", type: "string", required: true, description: "ID du groupe (path)", isPath: true },
-        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
-      ],
-      notes: "Map des membres avec uid, displayName, role, avatar."
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "targetUserID", type: "string", required: true, description: "UID du membre" },
+        { name: "muted", type: "boolean", required: true, description: "true = muter, false = démuter" }
+      ]
     },
     {
-      server: "rtdb", method: "GET",
-      path: "/playus-games-v1.json",
-      description: "Liste de tous les jeux disponibles",
+      server: "firebase", method: "CALL", path: "/updateGroupProfileName",
+      description: "Renommer son nom affiché dans un groupe",
       params: [
-        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
-      ],
-      notes: "Noeud racine des configurations de jeux. Accès via REST API Firebase."
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "name", type: "string", required: true, description: "Nouveau nom de profil" }
+      ]
     },
     {
-      server: "rtdb", method: "GET",
-      path: "/playus-avatar-assets.json",
-      description: "Index des assets d'avatars disponibles",
+      server: "firebase", method: "CALL", path: "/removeGroup",
+      description: "Supprimer un groupe (admin uniquement)",
       params: [
-        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
+        { name: "groupID", type: "string", required: true, description: "ID du groupe à supprimer" }
+      ],
+      notes: "Action irréversible. Seul le créateur/admin peut supprimer un groupe."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/reactToChat",
+      description: "Réagir à un message de chat (emoji reaction)",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "messageId", type: "string", required: true, description: "ID du message" },
+        { name: "reaction", type: "string", required: true, description: "Emoji de réaction" }
       ]
     }
   ]
