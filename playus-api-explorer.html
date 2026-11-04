@@ -2886,8 +2886,8 @@ async function awGroupChanged() {
     }
     _awGroupGames = docs.map(r => {
       const d = r.document, f = d.fields || {}, id = d.name.split('/').pop();
-      const gameId = f.gameId ? (f.gameId.stringValue || '') : '';
-      const gameName = f.gameName ? (f.gameName.stringValue || '') : (f.name ? (f.name.stringValue || '') : gameId);
+      const gameId = f.gameID ? (f.gameID.stringValue || '') : (f.gameId ? (f.gameId.stringValue || '') : '');
+      const gameName = f.gameName ? (f.gameName.stringValue || '') : (f.name ? (f.name.stringValue || '') : (f.gameID ? (f.gameID.stringValue || '') : gameId));
       const gameDay = f.gameDay ? (f.gameDay.timestampValue || f.gameDay.stringValue || '') : '';
       const dayStr = gameDay ? gameDay.slice(0, 10) : '?';
       const status = f.status ? (f.status.stringValue || '') : '';
