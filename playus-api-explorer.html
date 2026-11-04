@@ -1247,26 +1247,11 @@ const API = {
       ]
     },
     {
-      server: "firebase", method: "CALL", path: "/leaveGroup",
-      description: "Quitter un groupe",
-      params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe à quitter" }
-      ]
-    },
-    {
       server: "firebase", method: "CALL", path: "/kickUser",
       description: "Exclure un utilisateur du groupe",
       params: [
         { name: "groupID", type: "string", required: true, description: "ID du groupe" },
         { name: "targetUserId", type: "string", required: true, description: "ID de l'utilisateur à exclure" }
-      ]
-    },
-    {
-      server: "firebase", method: "CALL", path: "/removeFromGroup",
-      description: "Retirer un membre du groupe avec option de blocage",
-      params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
-        { name: "blockUser", type: "boolean", required: false, description: "Bloquer l'utilisateur (empêcher de rejoindre à nouveau)" }
       ]
     },
     {
@@ -1361,13 +1346,6 @@ const API = {
         { name: "purchaseToken", type: "string", required: true, description: "Token d'achat Google Play" }
       ],
       notes: "Abonnements: playus.premium.monthly."
-    },
-    {
-      server: "firebase", method: "CALL", path: "/confirmTransfer",
-      description: "Confirmer un transfert de coins (cadeau)",
-      params: [
-        { name: "purchaseToken", type: "string", required: true, description: "Token de la transaction" }
-      ]
     },
     {
       server: "firebase", method: "CALL", path: "/confirmGroupAvatarUpload",
@@ -1610,13 +1588,7 @@ const API = {
       ]
     },
 
-    // ========== CLOUD FUNCTIONS (manquantes du premier scan) ==========
-    {
-      server: "firebase", method: "CALL", path: "/getUserData",
-      description: "Récupérer son profil complet (groupes, coins, avatar, paramètres)",
-      params: [],
-      notes: "Retourne l'objet utilisateur complet : groups, coins, avatar, displayName, language, premium. C'est LA fonction pour connaître ses groupes et son profil. Aucun paramètre requis — le backend utilise auth.uid."
-    },
+    // ========== CLOUD FUNCTIONS (confirmées par brute-force) ==========
     {
       server: "firebase", method: "CALL", path: "/sendChat",
       description: "Envoyer un message dans le chat d'un groupe",
@@ -1652,12 +1624,13 @@ const API = {
       ]
     },
     {
-      server: "firebase", method: "CALL", path: "/removeGroup",
-      description: "Supprimer un groupe (admin uniquement)",
+      server: "firebase", method: "CALL", path: "/setMemberBlocked",
+      description: "Bloquer/débloquer un membre du groupe",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe à supprimer" }
-      ],
-      notes: "Action irréversible. Seul le créateur/admin peut supprimer un groupe."
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "targetUserID", type: "string", required: true, description: "UID du membre" },
+        { name: "blocked", type: "boolean", required: true, description: "true = bloquer, false = débloquer" }
+      ]
     },
     {
       server: "firebase", method: "CALL", path: "/reactToChat",
