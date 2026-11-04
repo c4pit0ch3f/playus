@@ -2759,7 +2759,11 @@ function buildGameActionWidget() {
           <input type="checkbox" id="aw-isLateJoinerBonus"><label for="aw-isLateJoinerBonus">isLateJoinerBonus — Bonus nouveau membre</label>
         </div>
         <div class="aw-checkbox-row">
-          <input type="checkbox" id="aw-skip-track" checked><label for="aw-skip-track">Appeler trackGameAttempt avant</label>
+          <input type="checkbox" id="aw-skip-track" checked onchange="document.getElementById('aw-delay-row').hidden=!this.checked"><label for="aw-skip-track">Appeler trackGameAttempt avant</label>
+        </div>
+        <div class="aw-row" id="aw-delay-row">
+          <div class="aw-label">Délai avant addGameScore (sec)</div>
+          <input class="aw-input" type="number" id="aw-delay" placeholder="0" min="0" max="300" value="0">
         </div>
         <hr class="aw-divider">
         <button class="send-btn" id="aw-send-btn" onclick="runGameAction()" disabled>
@@ -3003,6 +3007,18 @@ async function runGameAction() {
   }
 
   if (attemptID) scoreParams.attemptId = attemptID;
+
+  if (doTrack) {
+    const delaySec = parseInt(document.getElementById('aw-delay').value) || 0;
+    if (delaySec > 0) {
+      addLog('step-info', `   Attente ${delaySec}s avant addGameScore...`);
+      for (let i = delaySec; i > 0; i--) {
+        addLog('step-info', `   ${i}...`);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      addLog('step-ok', '   Délai terminé');
+    }
+  }
 
   addLog('step-info', '2. addGameScore...');
   addLog('step-info', '   Params : ' + JSON.stringify(scoreParams));
