@@ -565,6 +565,40 @@
   }
   .expand-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+  .source-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 2px 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: var(--bg-input);
+    color: var(--fg-muted);
+    border: 1px solid var(--border);
+  }
+  .section-desc {
+    font-size: 12px;
+    color: var(--fg-dim);
+    line-height: 1.5;
+    padding: 2px 0 6px;
+    font-style: italic;
+  }
+  .server-group.collapsed .section-desc { display: none; }
+  .flow-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
   #detail-content.resp-fullscreen > *:not(.response-section) { display: none !important; }
   #detail-content.resp-fullscreen .response-section { margin-top: 0; }
   #detail-content.resp-fullscreen .response-body { max-height: calc(100vh - 120px); }
@@ -2071,11 +2105,13 @@ function showDetail(idx) {
       const isUid = /^(uid|userid|targetuserid)$/.test(pLow);
       const isGroup = /^(groupid)$/.test(pLow);
       const isGame = /^(gameid)$/.test(pLow);
+      const isGameDay = pLow === 'gameday';
       const inputId = `param-${idx}-${i}`;
       let afBtn = '';
       if (isUid) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();fillUidField('${inputId}')">Mon UID</button>`;
       else if (isGroup) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGroupDropdown(this,'${inputId}')">Mes groupes</button>`;
       else if (isGame) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGameDropdown(this,'${inputId}')">Jeux</button>`;
+      else if (isGameDay) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();document.getElementById('${inputId}').value=new Date().toISOString().slice(0,10);document.getElementById('${inputId}').dispatchEvent(new Event('input'))">Aujourd'hui</button>`;
       const inputHtml = afBtn
         ? `<div class="autofill-wrap"><input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">${afBtn}</div>`
         : `<input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">`;
@@ -2109,6 +2145,7 @@ function showDetail(idx) {
   document.getElementById("detail-content").innerHTML = `
     <div class="detail-header">
       <span class="method-badge ${methodClass}">${ep.method}</span>
+      <span class="source-badge" style="margin-top:4px">${SOURCE_LABELS[ep.server] || ep.server}</span>
       <div class="detail-url">${fullUrl}</div>
     </div>
     <div class="detail-description">${ep.description}</div>
@@ -2474,46 +2511,78 @@ function filterEndpoints() {
   });
 }
 
+const SECTIONS = [
+  { key: "profile", name: "Mon Profil", desc: "Profil, coins, dés, abonnement premium." },
+  { key: "groups", name: "Mes Groupes", desc: "Rejoindre, créer et configurer mes groupes de jeu." },
+  { key: "admin", name: "Administration du Groupe", desc: "Exclure, muter, bloquer, promouvoir des membres." },
+  { key: "gameplay", name: "Jeu du Jour & Parties", desc: "1 mini-jeu/jour tiré au sort. 1 essai libre, 2 comptés, +1 pub, +dés. Flow : requestGame → trackAttempt → jouer → addScore." },
+  { key: "leaderboard", name: "Classements", desc: "Rankings dans le groupe et classement mondial mensuel." },
+  { key: "catalog", name: "Catalogue de Jeux", desc: "Mini-jeux disponibles, configs et notes des joueurs." },
+  { key: "shop", name: "Shop & Économie", desc: "Argent réel → coins → items avatar. Récompenses de saison." },
+  { key: "chat", name: "Chat & GIFs", desc: "Messages, réactions emoji et GIFs dans les groupes." },
+  { key: "support", name: "Support & Aide", desc: "FAQ et assistance IA Cossistant." }
+];
+const EP_META = {
+  0:{s:"profile",o:0}, 19:{s:"profile",o:1}, 13:{s:"profile",o:2}, 55:{s:"profile",o:3}, 15:{s:"profile",o:4},
+  17:{s:"groups",o:0}, 18:{s:"groups",o:1}, 20:{s:"groups",o:2}, 56:{s:"groups",o:3},
+  1:{s:"groups",o:4}, 2:{s:"groups",o:5}, 3:{s:"groups",o:6}, 5:{s:"groups",o:7}, 60:{s:"groups",o:8}, 16:{s:"groups",o:9},
+  4:{s:"admin",o:0}, 58:{s:"admin",o:1}, 59:{s:"admin",o:2}, 61:{s:"admin",o:3},
+  6:{s:"gameplay",o:0,f:1}, 23:{s:"gameplay",o:1,f:2}, 8:{s:"gameplay",o:2,f:3}, 7:{s:"gameplay",o:3,f:4}, 11:{s:"gameplay",o:4,f:5}, 29:{s:"gameplay",o:5}, 26:{s:"gameplay",o:6},
+  14:{s:"leaderboard",o:0}, 54:{s:"leaderboard",o:1},
+  22:{s:"catalog",o:0}, 21:{s:"catalog",o:1}, 53:{s:"catalog",o:2}, 28:{s:"catalog",o:3},
+  10:{s:"shop",o:0}, 12:{s:"shop",o:1}, 9:{s:"shop",o:2}, 25:{s:"shop",o:3}, 50:{s:"shop",o:4}, 51:{s:"shop",o:5}, 52:{s:"shop",o:6},
+  57:{s:"chat",o:0}, 62:{s:"chat",o:1}, 24:{s:"chat",o:2},
+  30:{s:"chat",o:3}, 32:{s:"chat",o:4}, 31:{s:"chat",o:5}, 33:{s:"chat",o:6}, 34:{s:"chat",o:7}, 35:{s:"chat",o:8}, 36:{s:"chat",o:9},
+  27:{s:"support",o:0}, 37:{s:"support",o:1}, 38:{s:"support",o:2}, 39:{s:"support",o:3},
+  40:{s:"support",o:4}, 41:{s:"support",o:5}, 42:{s:"support",o:6}, 43:{s:"support",o:7},
+  44:{s:"support",o:8}, 45:{s:"support",o:9}, 46:{s:"support",o:10}, 47:{s:"support",o:11},
+  48:{s:"support",o:12}, 49:{s:"support",o:13}
+};
+const SOURCE_LABELS = { firebase: "CF", firestore: "Firestore", klipy: "Klipy", cossistant: "Cossistant", static: "CDN" };
+
 function render() {
   const container = document.getElementById("endpoint-groups");
-  const serverOrder = ["firebase", "firestore", "klipy", "cossistant", "static"];
   let totalEndpoints = 0;
-  const serverCounts = {};
 
-  serverOrder.forEach(skey => {
-    const srv = API.servers[skey];
-    const eps = API.endpoints.map((ep, i) => ({ ...ep, _idx: i })).filter(ep => ep.server === skey);
+  SECTIONS.forEach(sec => {
+    const eps = API.endpoints.map((ep, i) => ({ ...ep, _idx: i }))
+      .filter(ep => EP_META[ep._idx] && EP_META[ep._idx].s === sec.key)
+      .sort((a, b) => (EP_META[a._idx].o ?? a._idx) - (EP_META[b._idx].o ?? b._idx));
     if (eps.length === 0) return;
-    serverCounts[skey] = eps.length;
     totalEndpoints += eps.length;
 
     const group = document.createElement("div");
     group.className = "server-group";
     group.innerHTML = `
       <div class="server-group-header" onclick="this.parentElement.classList.toggle('collapsed')">
-        <h2>${srv.name} <span style="font-weight:400;color:var(--fg-muted)">(${eps.length})</span></h2>
-        <span class="server-url">${srv.baseUrl || "Multiple"}</span>
+        <h2>${sec.name} <span style="font-weight:400;color:var(--fg-muted)">(${eps.length})</span></h2>
         <span class="chevron">&#9660;</span>
       </div>
+      <div class="section-desc">${sec.desc}</div>
       <div class="endpoint-list">
-        ${eps.map(ep => `
-          <div class="endpoint-card" onclick="showDetail(${ep._idx})" data-idx="${ep._idx}" data-path="${ep.path}" data-desc="${ep.description}">
-            <span class="method-badge ${ep.method}">${ep.method}</span>
-            <div class="endpoint-info">
-              <div class="endpoint-path">${ep.path}</div>
-              <div class="endpoint-desc">${ep.description}</div>
-            </div>
-            <span class="arrow">&#8250;</span>
-          </div>
-        `).join("")}
+        ${eps.map(ep => {
+          const meta = EP_META[ep._idx];
+          const srcLabel = SOURCE_LABELS[ep.server] || ep.server;
+          const flowHtml = meta.f ? `<span class="flow-step">${meta.f}</span>` : '';
+          return `
+            <div class="endpoint-card" onclick="showDetail(${ep._idx})" data-idx="${ep._idx}" data-path="${ep.path}" data-desc="${ep.description}">
+              <span class="method-badge ${ep.method}">${ep.method}</span>
+              <span class="source-badge">${srcLabel}</span>
+              ${flowHtml}
+              <div class="endpoint-info">
+                <div class="endpoint-path">${ep.path}</div>
+                <div class="endpoint-desc">${ep.description}</div>
+              </div>
+              <span class="arrow">&#8250;</span>
+            </div>`;
+        }).join("")}
       </div>`;
     container.appendChild(group);
   });
 
   document.getElementById("statsBar").innerHTML = `
     <span class="stat"><strong>${totalEndpoints}</strong> endpoints</span>
-    <span class="stat"><strong>${Object.keys(API.servers).length}</strong> serveurs</span>
-    <span class="stat"><strong>${serverCounts.firebase || 0}</strong> Cloud Functions</span>
+    <span class="stat"><strong>${SECTIONS.length}</strong> sections</span>
   `;
 
   updateAuthDot();
