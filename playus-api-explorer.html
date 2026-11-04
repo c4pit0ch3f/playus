@@ -115,11 +115,11 @@
   }
 
   @media (min-width: 1001px) {
-    body { background: var(--bg-input); }
-    body::before { background: var(--bg-input); }
+    body { background: var(--bg); }
+    body::before { background: var(--bg); }
     .app-shell {
       background: var(--bg);
-      max-width: 1400px;
+      max-width: 100%;
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
       grid-template-rows: auto auto 1fr auto;
@@ -609,8 +609,6 @@
 
   @media (min-width: 1001px) {
     .app-shell {
-      border-left: 1px solid var(--border);
-      border-right: 1px solid var(--border);
       min-height: 100vh;
     }
     #detail-view .detail-placeholder {
