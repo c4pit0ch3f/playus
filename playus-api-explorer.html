@@ -1208,6 +1208,12 @@ const API = {
       auth: "none",
       description: "Assets avatars, catalogue, shop, rewards, game bundles"
     },
+    firestore: {
+      name: "Cloud Firestore (lecture directe)",
+      baseUrl: "https://firestore.googleapis.com/v1/projects/playus-ds/databases/(default)/documents",
+      auth: "bearer",
+      description: "L'app lit les données directement via Firestore SDK (v26). Collections : User, Group, Game, GameRating, Report, FAQ. Sous-collections : Group/{id}/GroupGame, Group/{id}/Chat, Group/{id}/Inventory."
+    },
     rtdb: {
       name: "Firebase Realtime Database (non utilisé côté client)",
       baseUrl: "https://playus-ds-default-rtdb.europe-west1.firebasedatabase.app",
@@ -1354,6 +1360,143 @@ const API = {
         { name: "groupID", type: "string", required: true, description: "ID du groupe" },
         { name: "uploadUrl", type: "string", required: false, description: "URL de l'image uploadée" }
       ]
+    },
+
+    // ========== FIRESTORE (lecture directe — observé dans l'APK) ==========
+
+    {
+      server: "firestore", method: "POST", path: ":runQuery",
+      description: "Mes groupes — Group where members array-contains mon UID",
+      params: [
+        { name: "uid", type: "string", required: true, description: "UID Firebase (visible dans le panneau auth)" }
+      ],
+      notes: "Requête principale de l'app au lancement : écoute tous les groupes dont tu es membre. Le champ 'members' est un array d'UIDs dans chaque document Group. L'app utilise addSnapshotListener (temps réel), ici on fait un get one-shot.",
+      firestoreQuery: {
+        structuredQuery: {
+          from: [{ collectionId: "Group" }],
+          where: { fieldFilter: { field: { fieldPath: "members" }, op: "ARRAY_CONTAINS", value: { stringValue: "$uid" } } }
+        }
+      }
+    },
+    {
+      server: "firestore", method: "POST", path: ":runQuery",
+      description: "Demandes d'adhésion en attente — Group where requests array-contains mon UID",
+      params: [
+        { name: "uid", type: "string", required: true, description: "UID Firebase" }
+      ],
+      notes: "Deuxième listener au lancement : les groupes où tu as une demande en attente.",
+      firestoreQuery: {
+        structuredQuery: {
+          from: [{ collectionId: "Group" }],
+          where: { fieldFilter: { field: { fieldPath: "requests" }, op: "ARRAY_CONTAINS", value: { stringValue: "$uid" } } }
+        }
+      }
+    },
+    {
+      server: "firestore", method: "GET", path: "/User/{uid}",
+      description: "Mon profil utilisateur Firestore",
+      params: [
+        { name: "uid", type: "string", required: true, description: "UID Firebase", isPath: true }
+      ],
+      notes: "L'app écoute ce document en temps réel (addSnapshotListener). Contient le profil, coins, dice, inventaire, etc."
+    },
+    {
+      server: "firestore", method: "GET", path: "/Group/{groupId}",
+      description: "Détail d'un groupe",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe", isPath: true }
+      ],
+      notes: "Document Group complet avec members[], admins, nom, avatar, settings, etc."
+    },
+    {
+      server: "firestore", method: "GET", path: "/Game/{gameId}",
+      description: "Détail d'un jeu",
+      params: [
+        { name: "gameId", type: "string", required: true, description: "ID du jeu", isPath: true }
+      ],
+      notes: "Document du catalogue de jeux."
+    },
+    {
+      server: "firestore", method: "POST", path: ":runQuery",
+      description: "Liste tous les jeux (collection Game)",
+      params: [],
+      notes: "Récupère tous les documents de la collection Game.",
+      firestoreQuery: {
+        structuredQuery: {
+          from: [{ collectionId: "Game" }]
+        }
+      }
+    },
+    {
+      server: "firestore", method: "POST", path: ":runQuery",
+      description: "Parties d'un groupe — GroupGame par gameDay",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
+        { name: "gameDay", type: "string", required: true, description: "Date du jour de jeu (ex: 2026-11-04)" }
+      ],
+      notes: "Sous-collection Group/{groupId}/GroupGame filtrée par gameDay. L'app filtre aussi avec limit().",
+      firestoreQuery: {
+        structuredQuery: {
+          from: [{ collectionId: "GroupGame", allDescendants: false }],
+          where: { fieldFilter: { field: { fieldPath: "gameDay" }, op: "EQUAL", value: { stringValue: "$gameDay" } } },
+          limit: 50
+        },
+        parent: "projects/playus-ds/databases/(default)/documents/Group/$groupId"
+      }
+    },
+    {
+      server: "firestore", method: "GET", path: "/Group/{groupId}/Chat",
+      description: "Messages du chat d'un groupe",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe", isPath: true }
+      ],
+      notes: "Sous-collection Chat du groupe. L'app utilise addSnapshotListener pour le temps réel."
+    },
+    {
+      server: "firestore", method: "GET", path: "/Group/{groupId}/Inventory",
+      description: "Inventaire d'un groupe",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe", isPath: true }
+      ],
+      notes: "Sous-collection Inventory du groupe."
+    },
+    {
+      server: "firestore", method: "GET", path: "/Group/{groupId}/GroupGame",
+      description: "Toutes les parties d'un groupe",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe", isPath: true }
+      ],
+      notes: "Sous-collection GroupGame. Chaque document est une partie avec gameDay, scores, etc."
+    },
+    {
+      server: "firestore", method: "GET", path: "/FAQ",
+      description: "FAQ de l'application",
+      params: [],
+      notes: "Collection top-level FAQ."
+    },
+    {
+      server: "firestore", method: "GET", path: "/GameRating/{ratingId}",
+      description: "Note d'un jeu par un utilisateur",
+      params: [
+        { name: "ratingId", type: "string", required: true, description: "ID du document rating", isPath: true }
+      ],
+      notes: "Contient : id, gameID, userID, groupID, groupGameID, rating, score, feedback, platform, appVersion, language, customFeedback, createdAt."
+    },
+    {
+      server: "firestore", method: "POST", path: ":runQuery",
+      description: "GroupGames récents d'un groupe (par updatedAt)",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" }
+      ],
+      notes: "Récupère les parties récentes triées par updatedAt descendant.",
+      firestoreQuery: {
+        structuredQuery: {
+          from: [{ collectionId: "GroupGame", allDescendants: false }],
+          orderBy: [{ field: { fieldPath: "updatedAt" }, direction: "DESCENDING" }],
+          limit: 20
+        },
+        parent: "projects/playus-ds/databases/(default)/documents/Group/$groupId"
+      }
     },
 
     // ========== KLIPY GIF API ==========
@@ -1726,7 +1869,12 @@ function showDetail(idx) {
   }
 
   const isFirebaseCall = ep.server === "firebase";
+  const isFirestoreEp = ep.server === "firestore";
   const sendLabel = ep.method === "WSS" ? "Tester la connexion" : "Envoyer la requête";
+
+  let formatNote = "";
+  if (isFirebaseCall) formatNote = "<br><strong>Format :</strong> POST avec body {\"data\": {...}}";
+  else if (isFirestoreEp && ep.firestoreQuery) formatNote = "<br><strong>Format :</strong> Firestore REST runQuery — les réponses sont décodées automatiquement";
 
   document.getElementById("detail-content").innerHTML = `
     <div class="detail-header">
@@ -1737,7 +1885,7 @@ function showDetail(idx) {
     <div class="note-box">
       <strong>Serveur :</strong> ${srv.name}<br>
       <strong>Auth :</strong> ${srv.auth === "bearer" ? "Firebase ID Token (Bearer)" : srv.auth === "klipy" ? "API Key Klipy (X-API-Key)" : srv.auth === "cossistant" ? "Visitor ID" : "Aucune"}
-      ${isFirebaseCall ? "<br><strong>Format :</strong> POST avec body {\"data\": {...}}" : ""}
+      ${formatNote}
     </div>
     ${paramsHtml}
     ${notesHtml}
@@ -1792,8 +1940,23 @@ function buildCurl(ep) {
   const srv = API.servers[ep.server];
   let url = buildUrl(ep);
   const isCall = ep.server === "firebase";
+  const isFirestore = ep.server === "firestore";
   const method = isCall ? "POST" : ep.method;
   if (method === "WSS") return `wscat -c "${url}"`;
+
+  if (isFirestore && ep.firestoreQuery) {
+    const q = JSON.parse(JSON.stringify(ep.firestoreQuery));
+    let reqUrl = url;
+    if (q.parent) {
+      reqUrl = "https://firestore.googleapis.com/v1/" + q.parent + ":runQuery";
+    }
+    let parts = [`curl -X POST`];
+    parts.push(`  -H "Authorization: Bearer <FIREBASE_TOKEN>"`);
+    parts.push(`  -H "Content-Type: application/json"`);
+    parts.push(`  -d '${JSON.stringify(q.parent ? { structuredQuery: q.structuredQuery } : q, null, 2)}'`);
+    parts.push(`  "${reqUrl}"`);
+    return parts.join(" \\\n");
+  }
 
   let parts = [`curl -X ${method}`];
   if (srv.auth === "bearer") parts.push(`  -H "Authorization: Bearer <FIREBASE_TOKEN>"`);
@@ -1820,6 +1983,7 @@ function updateCurlPreview(idx) {
   const srv = API.servers[ep.server];
   const params = gatherParams(idx);
   const isCall = ep.server === "firebase";
+  const isFirestore = ep.server === "firestore";
   const method = isCall ? "POST" : ep.method;
   let url = buildUrl(ep);
 
@@ -1833,6 +1997,28 @@ function updateCurlPreview(idx) {
 
   if (method === "WSS") {
     document.getElementById("curl-preview").textContent = `wscat -c "${url}${qs ? "?" + qs : ""}"`;
+    return;
+  }
+
+  if (isFirestore && ep.firestoreQuery) {
+    const q = JSON.parse(JSON.stringify(ep.firestoreQuery));
+    const allParams = { ...params.body, ...params.path };
+    const replacePlaceholders = (obj) => {
+      if (typeof obj === 'string') return obj.replace(/\$(\w+)/g, (_, k) => allParams[k] || `<${k}>`);
+      if (Array.isArray(obj)) return obj.map(replacePlaceholders);
+      if (obj && typeof obj === 'object') { const o = {}; for (const [k,v] of Object.entries(obj)) o[k] = replacePlaceholders(v); return o; }
+      return obj;
+    };
+    const resolved = replacePlaceholders(q);
+    let reqUrl = url;
+    if (resolved.parent) reqUrl = "https://firestore.googleapis.com/v1/" + resolved.parent + ":runQuery";
+    const token = document.getElementById("authToken").value.trim();
+    let parts = [`curl -X POST`];
+    parts.push(`  -H "Authorization: Bearer ${token || "<FIREBASE_TOKEN>"}"`);
+    parts.push(`  -H "Content-Type: application/json"`);
+    parts.push(`  -d '${JSON.stringify(resolved.parent ? { structuredQuery: resolved.structuredQuery } : resolved, null, 2)}'`);
+    parts.push(`  "${reqUrl}"`);
+    document.getElementById("curl-preview").textContent = parts.join(" \\\n");
     return;
   }
 
@@ -1861,6 +2047,7 @@ async function sendRequest(idx) {
   const srv = API.servers[ep.server];
   const params = gatherParams(idx);
   const isCall = ep.server === "firebase";
+  const isFirestore = ep.server === "firestore";
   const httpMethod = isCall ? "POST" : ep.method;
 
   if (httpMethod === "WSS") {
@@ -1883,7 +2070,31 @@ async function sendRequest(idx) {
 
   const headers = getAuthHeaders(ep.server);
   const fetchOpts = { method: httpMethod, headers };
-  if (httpMethod === "POST" || httpMethod === "PUT" || httpMethod === "PATCH") {
+
+  if (isFirestore && ep.firestoreQuery) {
+    fetchOpts.method = "POST";
+    const q = JSON.parse(JSON.stringify(ep.firestoreQuery));
+    const allParams = { ...params.body, ...params.path };
+    const replacePlaceholders = (obj) => {
+      if (typeof obj === 'string') {
+        return obj.replace(/\$(\w+)/g, (_, key) => allParams[key] || `$${key}`);
+      }
+      if (Array.isArray(obj)) return obj.map(replacePlaceholders);
+      if (obj && typeof obj === 'object') {
+        const out = {};
+        for (const [k, v] of Object.entries(obj)) out[k] = replacePlaceholders(v);
+        return out;
+      }
+      return obj;
+    };
+    const resolved = replacePlaceholders(q);
+    if (resolved.parent) {
+      url = "https://firestore.googleapis.com/v1/" + resolved.parent + ":runQuery";
+      fetchOpts.body = JSON.stringify({ structuredQuery: resolved.structuredQuery });
+    } else {
+      fetchOpts.body = JSON.stringify(resolved);
+    }
+  } else if (httpMethod === "POST" || httpMethod === "PUT" || httpMethod === "PATCH") {
     const bodyData = isCall ? { data: params.body } : params.body;
     if (Object.keys(params.body).length > 0 || isCall) {
       fetchOpts.body = JSON.stringify(bodyData);
@@ -1916,7 +2127,20 @@ async function sendRequest(idx) {
     const ct = res.headers.get("content-type") || "";
     if (ct.includes("json")) {
       body = await res.json();
-      body = JSON.stringify(body, null, 2);
+      if (isFirestore && Array.isArray(body)) {
+        const docs = body.filter(r => r.document).map(r => {
+          const d = r.document;
+          const id = d.name.split('/').pop();
+          const fields = {};
+          for (const [k, v] of Object.entries(d.fields || {})) {
+            fields[k] = firestoreValueToJs(v);
+          }
+          return { _id: id, ...fields };
+        });
+        body = JSON.stringify(docs, null, 2);
+      } else {
+        body = JSON.stringify(body, null, 2);
+      }
     } else {
       body = await res.text();
     }
@@ -1927,6 +2151,24 @@ async function sendRequest(idx) {
   }
   btn.classList.remove("loading");
   btn.disabled = false;
+}
+
+function firestoreValueToJs(v) {
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('nullValue' in v) return null;
+  if ('timestampValue' in v) return v.timestampValue;
+  if ('mapValue' in v) {
+    const out = {};
+    for (const [k, fv] of Object.entries(v.mapValue.fields || {})) out[k] = firestoreValueToJs(fv);
+    return out;
+  }
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(firestoreValueToJs);
+  if ('geoPointValue' in v) return v.geoPointValue;
+  if ('referenceValue' in v) return v.referenceValue;
+  return v;
 }
 
 function showResponse(status, body, ms) {
@@ -1996,7 +2238,7 @@ function filterEndpoints() {
 
 function render() {
   const container = document.getElementById("endpoint-groups");
-  const serverOrder = ["firebase", "klipy", "cossistant", "static"];
+  const serverOrder = ["firebase", "firestore", "klipy", "cossistant", "static"];
   let totalEndpoints = 0;
   const serverCounts = {};
 
