@@ -97,7 +97,7 @@
   }
 
   .app-shell {
-    max-width: 430px;
+    max-width: 1000px;
     margin: 0 auto;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -114,7 +114,7 @@
     background: var(--bg);
   }
 
-  @media (min-width: 431px) {
+  @media (min-width: 1001px) {
     body { background: var(--bg-input); }
     body::before { background: var(--bg-input); }
     .app-shell { background: var(--bg); }
@@ -575,14 +575,14 @@
     text-align: center;
   }
 
-  @media (min-width: 431px) {
+  @media (min-width: 1001px) {
     .app-shell {
       border-left: 1px solid var(--border);
       border-right: 1px solid var(--border);
       min-height: 100vh;
     }
   }
-  @media (max-width: 430px) {
+  @media (max-width: 600px) {
     .server-group-header .server-url { display: none; }
   }
 
@@ -856,6 +856,8 @@
 
 </div><!-- /.app-shell -->
 
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script>
 const FIREBASE_API_KEY = 'AIzaSyDdKnMbEnIBEkxGYost_Y7vgNuM_YQ_V3A';
 const GOOGLE_CLIENT_ID = '978176341853-ihnmmilj0eiig5q1i074g8ji76am5o5m.apps.googleusercontent.com';
@@ -863,8 +865,50 @@ const REDIRECT_URI = 'https://playus-ds.firebaseapp.com/__/auth/handler';
 
 let firebaseRefreshToken = null;
 let tokenExpiryTime = null;
+let fbAuth = null;
 
-function startGoogleSignIn() {
+try {
+  if (typeof firebase !== 'undefined') {
+    firebase.initializeApp({
+      apiKey: FIREBASE_API_KEY,
+      authDomain: 'playus-ds.firebaseapp.com',
+      projectId: 'playus-ds',
+      storageBucket: 'playus-ds.firebasestorage.app',
+      messagingSenderId: '978176341853',
+      databaseURL: 'https://playus-ds-default-rtdb.europe-west1.firebasedatabase.app'
+    });
+    fbAuth = firebase.auth();
+  }
+} catch(e) { console.warn('Firebase SDK init:', e); }
+
+async function startGoogleSignIn() {
+  document.getElementById('signin-error').hidden = true;
+
+  if (fbAuth) {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      const result = await fbAuth.signInWithPopup(provider);
+      const idToken = await result.user.getIdToken();
+      document.getElementById('authToken').value = idToken;
+      tokenExpiryTime = Date.now() + 3600000;
+      showConnectedState({
+        displayName: result.user.displayName,
+        email: result.user.email,
+        photoUrl: result.user.photoURL
+      });
+      updateAuthDot();
+      return;
+    } catch(e) {
+      console.warn('signInWithPopup failed, fallback:', e.code, e.message);
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
+        showSignInError("Popup bloqué ou fermé. Autorisez les popups pour ce fichier et réessayez.");
+        return;
+      }
+    }
+  }
+
   const url = 'https://accounts.google.com/o/oauth2/v2/auth?' +
     'client_id=' + encodeURIComponent(GOOGLE_CLIENT_ID) +
     '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
@@ -874,7 +918,6 @@ function startGoogleSignIn() {
   window.open(url, '_blank');
   document.getElementById('signin-step1').hidden = true;
   document.getElementById('signin-step2').hidden = false;
-  document.getElementById('signin-error').hidden = true;
 }
 
 function cancelSignIn() {
@@ -884,10 +927,15 @@ function cancelSignIn() {
   document.getElementById('oauth-url-paste').value = '';
 }
 
+function showSignInError(msg) {
+  const el = document.getElementById('signin-error');
+  el.innerHTML = msg;
+  el.hidden = false;
+}
+
 async function exchangeToken() {
   const raw = document.getElementById('oauth-url-paste').value.trim();
-  const errorEl = document.getElementById('signin-error');
-  errorEl.hidden = true;
+  document.getElementById('signin-error').hidden = true;
 
   let accessToken = null;
   if (raw.includes('#')) {
@@ -901,14 +949,34 @@ async function exchangeToken() {
     accessToken = raw;
   }
   if (!accessToken) {
-    errorEl.textContent = "Token introuvable dans l'URL collée. Copiez l'URL complète depuis la barre d'adresse de l'onglet redirigé (elle contient #access_token=...).";
-    errorEl.hidden = false;
+    showSignInError("Token introuvable dans l'URL collée. Copiez l'URL complète depuis la barre d'adresse après connexion (elle contient #access_token=...).");
     return;
   }
 
   const btn = document.querySelector('#signin-step2 .exchange-btn');
   btn.disabled = true;
   btn.textContent = 'Échange en cours...';
+
+  if (fbAuth) {
+    try {
+      const cred = firebase.auth.GoogleAuthProvider.credential(null, accessToken);
+      const result = await fbAuth.signInWithCredential(cred);
+      const idToken = await result.user.getIdToken();
+      document.getElementById('authToken').value = idToken;
+      tokenExpiryTime = Date.now() + 3600000;
+      showConnectedState({
+        displayName: result.user.displayName,
+        email: result.user.email,
+        photoUrl: result.user.photoURL
+      });
+      updateAuthDot();
+      btn.disabled = false;
+      btn.textContent = 'Récupérer le token Firebase';
+      return;
+    } catch(e) {
+      console.warn('signInWithCredential failed, trying REST:', e);
+    }
+  }
 
   try {
     const resp = await fetch(
@@ -931,14 +999,14 @@ async function exchangeToken() {
     firebaseRefreshToken = data.refreshToken;
     tokenExpiryTime = Date.now() + (parseInt(data.expiresIn) * 1000);
     try { localStorage.setItem('playus_refresh', data.refreshToken); } catch(e) {}
-
     showConnectedState(data);
     updateAuthDot();
   } catch(e) {
-    errorEl.innerHTML = '<strong>Erreur :</strong> ' + e.message.replace(/</g,'&lt;') +
-      '<br><br>Si "INVALID_IDP_RESPONSE" : le token Google a peut-être expiré. Relancez la connexion.' +
-      '<br>Si "redirect_uri_mismatch" : ajoutez le redirect URI dans la <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent)">Google Cloud Console</a>.';
-    errorEl.hidden = false;
+    showSignInError(
+      '<strong>Erreur :</strong> ' + String(e.message).replace(/</g,'&lt;') +
+      '<br><br>Depuis file://, les requêtes réseau sont bloquées. Servez le fichier en HTTP :' +
+      '<br><code>python3 -m http.server 8080</code> puis ouvrez <code>http://localhost:8080</code>'
+    );
   }
   btn.disabled = false;
   btn.textContent = 'Récupérer le token Firebase';
@@ -967,13 +1035,22 @@ function updateExpiryDisplay() {
 setInterval(updateExpiryDisplay, 30000);
 
 async function refreshFirebaseToken() {
+  if (fbAuth && fbAuth.currentUser) {
+    try {
+      const idToken = await fbAuth.currentUser.getIdToken(true);
+      document.getElementById('authToken').value = idToken;
+      tokenExpiryTime = Date.now() + 3600000;
+      updateExpiryDisplay();
+      updateAuthDot();
+      return;
+    } catch(e) { console.warn('SDK refresh failed:', e); }
+  }
+
   if (!firebaseRefreshToken) {
     try { firebaseRefreshToken = localStorage.getItem('playus_refresh'); } catch(e) {}
   }
   if (!firebaseRefreshToken) {
-    const err = document.getElementById('signin-error');
-    err.textContent = 'Pas de refresh token disponible. Reconnectez-vous via Google.';
-    err.hidden = false;
+    showSignInError('Pas de refresh token. Reconnectez-vous via Google.');
     return;
   }
   try {
@@ -1004,15 +1081,14 @@ async function refreshFirebaseToken() {
       document.getElementById('user-photo').hidden = true;
     }
   } catch(e) {
-    const err = document.getElementById('signin-error');
-    err.textContent = 'Erreur refresh : ' + e.message + ' — Reconnectez-vous.';
-    err.hidden = false;
+    showSignInError('Erreur refresh : ' + e.message + ' — Reconnectez-vous.');
     firebaseRefreshToken = null;
     try { localStorage.removeItem('playus_refresh'); } catch(e2) {}
   }
 }
 
 function signOut() {
+  if (fbAuth) { try { fbAuth.signOut(); } catch(e) {} }
   document.getElementById('authToken').value = '';
   firebaseRefreshToken = null;
   tokenExpiryTime = null;
@@ -1878,11 +1954,28 @@ setInterval(() => {
 
 render();
 
-try {
-  const savedRefresh = localStorage.getItem('playus_refresh');
-  if (savedRefresh) {
-    firebaseRefreshToken = savedRefresh;
-    refreshFirebaseToken();
-  }
-} catch(e) {}
+if (fbAuth) {
+  fbAuth.onAuthStateChanged(function(user) {
+    if (user) {
+      user.getIdToken().then(function(token) {
+        document.getElementById('authToken').value = token;
+        tokenExpiryTime = Date.now() + 3600000;
+        showConnectedState({
+          displayName: user.displayName,
+          email: user.email,
+          photoUrl: user.photoURL
+        });
+        updateAuthDot();
+      });
+    }
+  });
+} else {
+  try {
+    var savedRefresh = localStorage.getItem('playus_refresh');
+    if (savedRefresh) {
+      firebaseRefreshToken = savedRefresh;
+      refreshFirebaseToken();
+    }
+  } catch(e) {}
+}
 </script>
