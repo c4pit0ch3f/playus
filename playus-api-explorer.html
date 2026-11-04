@@ -1209,10 +1209,10 @@ const API = {
       description: "Assets avatars, catalogue, shop, rewards, game bundles"
     },
     rtdb: {
-      name: "Firebase Realtime Database",
+      name: "Firebase Realtime Database (non utilisé côté client)",
       baseUrl: "https://playus-ds-default-rtdb.europe-west1.firebasedatabase.app",
       auth: "bearer",
-      description: "Base de données temps réel — accès direct bloqué par les security rules. Toutes les données passent par les Cloud Functions callables ci-dessus."
+      description: "Le SDK RTDB n'est PAS dans l'APK. L'app n'accède jamais au RTDB directement — toutes les données transitent par les Cloud Functions."
     }
   },
   endpoints: [
@@ -1353,6 +1353,180 @@ const API = {
       params: [
         { name: "groupID", type: "string", required: true, description: "ID du groupe" },
         { name: "uploadUrl", type: "string", required: false, description: "URL de l'image uploadée" }
+      ]
+    },
+
+    // ========== CLOUD FUNCTIONS (confirmées brute-force, originales) ==========
+    {
+      server: "firebase", method: "CALL", path: "/getProfile",
+      description: "Récupérer le profil de l'utilisateur connecté",
+      params: [],
+      notes: "Retourne le profil complet de l'utilisateur authentifié (displayName, avatar, coins, etc.)."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getItems",
+      description: "Récupérer la liste des items disponibles",
+      params: [],
+      notes: "Retourne les items (shop, inventaire, etc.)."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getLeaderboard",
+      description: "Récupérer le leaderboard d'un groupe/jeu",
+      params: [
+        { name: "groupID", type: "string", required: false, description: "ID du groupe" },
+        { name: "gameId", type: "string", required: false, description: "ID du jeu" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getGames",
+      description: "Lister les jeux disponibles",
+      params: []
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getGroup",
+      description: "Récupérer les infos d'un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getGroupById",
+      description: "Récupérer un groupe par son ID",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getGroupMembers",
+      description: "Lister les membres d'un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getGroupMessages",
+      description: "Récupérer les messages d'un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "limit", type: "number", required: false, description: "Nombre max de messages" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getGroupsByUserId",
+      description: "Récupérer les groupes d'un utilisateur",
+      params: [
+        { name: "userID", type: "string", required: false, description: "ID utilisateur (défaut: auth.uid)" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getGroupsForGame",
+      description: "Récupérer les groupes jouant à un jeu",
+      params: [
+        { name: "gameId", type: "string", required: true, description: "ID du jeu" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getHomeFeedItems",
+      description: "Récupérer le flux d'accueil (feed)",
+      params: [],
+      notes: "Retourne les items du feed principal de l'app."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getUserGames",
+      description: "Récupérer les jeux de l'utilisateur",
+      params: []
+    },
+    {
+      server: "firebase", method: "CALL", path: "/getUserGroupIds",
+      description: "Récupérer les IDs des groupes de l'utilisateur",
+      params: []
+    },
+    {
+      server: "firebase", method: "CALL", path: "/joinGroup",
+      description: "Rejoindre un groupe (direct, sans demande)",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe ou code d'invitation" }
+      ],
+      notes: "Différent de joinGroupRequest : peut être un join direct sans validation admin."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/kickGroupMember",
+      description: "Exclure un membre du groupe (nom original)",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "targetUserId", type: "string", required: true, description: "ID du membre à exclure" }
+      ],
+      notes: "Fonction originale confirmée par brute-force. Voir aussi kickUser."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/reportUser",
+      description: "Signaler un utilisateur",
+      params: [
+        { name: "targetUserId", type: "string", required: true, description: "ID de l'utilisateur à signaler" },
+        { name: "reason", type: "string", required: false, description: "Raison du signalement" },
+        { name: "groupID", type: "string", required: false, description: "ID du groupe (contexte)" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/sendGroupMessage",
+      description: "Envoyer un message dans un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "message", type: "string", required: true, description: "Contenu du message" }
+      ],
+      notes: "Fonction originale confirmée par brute-force. Voir aussi sendChat."
+    },
+    {
+      server: "firebase", method: "CALL", path: "/addGroupGame",
+      description: "Ajouter un jeu au groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "gameId", type: "string", required: true, description: "ID du jeu à ajouter" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/assignRoleToMember",
+      description: "Assigner un rôle à un membre du groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "targetUserId", type: "string", required: true, description: "UID du membre" },
+        { name: "role", type: "string", required: true, description: "Rôle à assigner (admin, member, etc.)" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/buyItem",
+      description: "Acheter un item (coins ou autre monnaie in-app)",
+      params: [
+        { name: "itemId", type: "string", required: true, description: "ID de l'item" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/changeAge",
+      description: "Modifier l'âge de l'utilisateur",
+      params: [
+        { name: "age", type: "number", required: true, description: "Nouvel âge" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/changeName",
+      description: "Modifier le nom d'affichage de l'utilisateur",
+      params: [
+        { name: "name", type: "string", required: true, description: "Nouveau nom" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/createGroupGame",
+      description: "Créer une partie de jeu dans un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
+        { name: "gameId", type: "string", required: true, description: "ID du jeu" }
+      ]
+    },
+    {
+      server: "firebase", method: "CALL", path: "/createSeason",
+      description: "Créer une nouvelle saison pour un groupe",
+      params: [
+        { name: "groupID", type: "string", required: true, description: "ID du groupe" }
       ]
     },
 
@@ -1996,7 +2170,7 @@ function filterEndpoints() {
 
 function render() {
   const container = document.getElementById("endpoint-groups");
-  const serverOrder = ["firebase", "klipy", "cossistant", "static", "rtdb"];
+  const serverOrder = ["firebase", "klipy", "cossistant", "static"];
   let totalEndpoints = 0;
   const serverCounts = {};
 
