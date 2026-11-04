@@ -791,7 +791,9 @@
     <div class="user-info">
       <div class="user-name" id="user-name"></div>
       <div class="user-meta">
-        <span id="user-email"></span> · expire dans <span id="token-expiry">--</span> ·
+        <span id="user-email"></span><br>
+        UID : <code id="user-uid" style="font-family:var(--font-mono);font-size:10px;user-select:all;cursor:text">—</code><br>
+        expire dans <span id="token-expiry">--</span> ·
         <a href="#" onclick="refreshFirebaseToken();return false">Rafraîchir</a> ·
         <a href="#" class="logout" onclick="signOut();return false">Déconnexion</a>
       </div>
@@ -896,7 +898,8 @@ async function startGoogleSignIn() {
       showConnectedState({
         displayName: result.user.displayName,
         email: result.user.email,
-        photoUrl: result.user.photoURL
+        photoUrl: result.user.photoURL,
+        uid: result.user.uid
       });
       updateAuthDot();
       return;
@@ -967,7 +970,8 @@ async function exchangeToken() {
       showConnectedState({
         displayName: result.user.displayName,
         email: result.user.email,
-        photoUrl: result.user.photoURL
+        photoUrl: result.user.photoURL,
+        uid: result.user.uid
       });
       updateAuthDot();
       btn.disabled = false;
@@ -1023,6 +1027,16 @@ function showConnectedState(data) {
   else { photo.hidden = true; }
   document.getElementById('user-name').textContent = data.displayName || data.email || 'Connecté';
   document.getElementById('user-email').textContent = data.email || '';
+
+  let uid = data.uid || data.localId || '';
+  if (!uid) {
+    try {
+      const token = document.getElementById('authToken').value;
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+      uid = payload.user_id || payload.sub || '';
+    } catch(e) {}
+  }
+  document.getElementById('user-uid').textContent = uid || '—';
   updateExpiryDisplay();
 }
 
@@ -1532,12 +1546,23 @@ const API = {
     // ========== FIREBASE REALTIME DB ==========
     {
       server: "rtdb", method: "GET",
-      path: "/playus-games-v1.json",
-      description: "Liste de tous les jeux disponibles",
+      path: "/playus-database/users/{uid}.json",
+      description: "Mon profil utilisateur complet (groupes, coins, avatar, paramètres)",
       params: [
+        { name: "uid", type: "string", required: true, description: "Firebase UID (affiché après connexion)", isPath: true },
         { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
       ],
-      notes: "Noeud racine des configurations de jeux. Accès via REST API Firebase."
+      notes: "Retourne l'objet utilisateur complet : groups (liste des groupes avec rôle), coins, avatar, displayName, language, premium, etc. C'est le endpoint principal pour connaître ses groupes."
+    },
+    {
+      server: "rtdb", method: "GET",
+      path: "/playus-database/users/{uid}/groups.json",
+      description: "Mes groupes (sous-noeud groupes uniquement)",
+      params: [
+        { name: "uid", type: "string", required: true, description: "Firebase UID", isPath: true },
+        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
+      ],
+      notes: "Retourne uniquement la map des groupes de l'utilisateur avec les IDs et rôles."
     },
     {
       server: "rtdb", method: "GET",
@@ -1548,6 +1573,25 @@ const API = {
         { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
       ],
       notes: "PlayusGroup avec id, state, members, games, scores. Les listeners SSE sont aussi supportés."
+    },
+    {
+      server: "rtdb", method: "GET",
+      path: "/playus-database/groups/{groupId}/members.json",
+      description: "Liste des membres d'un groupe",
+      params: [
+        { name: "groupId", type: "string", required: true, description: "ID du groupe (path)", isPath: true },
+        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
+      ],
+      notes: "Map des membres avec uid, displayName, role, avatar."
+    },
+    {
+      server: "rtdb", method: "GET",
+      path: "/playus-games-v1.json",
+      description: "Liste de tous les jeux disponibles",
+      params: [
+        { name: "auth", type: "string", required: true, description: "Firebase ID token (query param)" }
+      ],
+      notes: "Noeud racine des configurations de jeux. Accès via REST API Firebase."
     },
     {
       server: "rtdb", method: "GET",
@@ -1963,7 +2007,8 @@ if (fbAuth) {
         showConnectedState({
           displayName: user.displayName,
           email: user.email,
-          photoUrl: user.photoURL
+          photoUrl: user.photoURL,
+          uid: user.uid
         });
         updateAuthDot();
       });
