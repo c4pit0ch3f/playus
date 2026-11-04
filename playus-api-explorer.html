@@ -1693,9 +1693,15 @@ const API = {
         { name: "score", type: "number", required: true, description: "Score obtenu" },
         { name: "gameId", type: "string", required: false, description: "ID du jeu" },
         { name: "groupGameId", type: "string", required: false, description: "ID de la partie de groupe" },
-        { name: "attemptId", type: "string", required: false, description: "ID de la tentative (si tracking activé)" }
+        { name: "attemptId", type: "string", required: false, description: "ID de la tentative (si tracking activé)" },
+        { name: "isFreeTry", type: "boolean", required: false, description: "Essai gratuit (1ère tentative)" },
+        { name: "isReplay", type: "boolean", required: false, description: "Replay d'une partie déjà jouée" },
+        { name: "isDicePlay", type: "boolean", required: false, description: "Tentative payée avec un dé" },
+        { name: "isUnderdogPlay", type: "boolean", required: false, description: "Partie underdog (joueur en retard)" },
+        { name: "isCatchupGame", type: "boolean", required: false, description: "Partie de rattrapage" },
+        { name: "isLateJoinerBonus", type: "boolean", required: false, description: "Bonus nouveau membre" }
       ],
-      notes: "Retourne AddGameScoreResult avec publicHighscoreStatus."
+      notes: "Retourne AddGameScoreResult avec publicHighscoreStatus. Le serveur peut ajouter blwBest, blwMin, isHidden, unrankedReason, scoreSource."
     },
     {
       server: "firebase", method: "CALL", path: "/trackGameAttempt",
@@ -2735,10 +2741,22 @@ function buildGameActionWidget() {
         <div id="aw-dynamic-params"></div>
         <hr class="aw-divider">
         <div class="aw-checkbox-row">
-          <input type="checkbox" id="aw-trial"><label for="aw-trial">Essai libre (ne compte pas)</label>
+          <input type="checkbox" id="aw-isFreeTry"><label for="aw-isFreeTry">isFreeTry — Essai gratuit (1ère tentative)</label>
         </div>
         <div class="aw-checkbox-row">
-          <input type="checkbox" id="aw-bonus"><label for="aw-bonus">Tentative bonus (pub / dé)</label>
+          <input type="checkbox" id="aw-isReplay"><label for="aw-isReplay">isReplay — Replay d'une partie déjà jouée</label>
+        </div>
+        <div class="aw-checkbox-row">
+          <input type="checkbox" id="aw-isDicePlay"><label for="aw-isDicePlay">isDicePlay — Tentative payée avec un dé</label>
+        </div>
+        <div class="aw-checkbox-row">
+          <input type="checkbox" id="aw-isUnderdogPlay"><label for="aw-isUnderdogPlay">isUnderdogPlay — Partie underdog</label>
+        </div>
+        <div class="aw-checkbox-row">
+          <input type="checkbox" id="aw-isCatchupGame"><label for="aw-isCatchupGame">isCatchupGame — Partie de rattrapage</label>
+        </div>
+        <div class="aw-checkbox-row">
+          <input type="checkbox" id="aw-isLateJoinerBonus"><label for="aw-isLateJoinerBonus">isLateJoinerBonus — Bonus nouveau membre</label>
         </div>
         <div class="aw-checkbox-row">
           <input type="checkbox" id="aw-skip-track" checked><label for="aw-skip-track">Appeler trackGameAttempt avant</label>
@@ -2944,8 +2962,9 @@ async function runGameAction() {
     const val = el.value.trim();
     if (val) scoreParams[key] = Number(val);
   });
-  if (document.getElementById('aw-trial').checked) scoreParams.isTrial = true;
-  if (document.getElementById('aw-bonus').checked) scoreParams.isBonus = true;
+  ['isFreeTry','isReplay','isDicePlay','isUnderdogPlay','isCatchupGame','isLateJoinerBonus'].forEach(f => {
+    if (document.getElementById('aw-' + f).checked) scoreParams[f] = true;
+  });
 
   function addLog(cls, msg) {
     log.innerHTML += `<div class="${cls}">${msg}</div>`;
