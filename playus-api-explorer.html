@@ -1997,8 +1997,9 @@ const API = {
       server: "firebase", method: "CALL", path: "/toggleAdmin",
       description: "Basculer le rôle admin d'un membre",
       params: [
-        { name: "groupID", type: "string", required: true, description: "ID du groupe" },
-        { name: "targetUserID", type: "string", required: true, description: "UID du membre à promouvoir/rétrograder" }
+        { name: "groupId", type: "string", required: true, description: "ID du groupe" },
+        { name: "memberId", type: "string", required: true, description: "UID du membre à promouvoir/rétrograder" },
+        { name: "setAdmin", type: "boolean", required: true, description: "true = promouvoir admin, false = rétrograder membre" }
       ]
     },
     {
