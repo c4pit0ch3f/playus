@@ -552,6 +552,23 @@
   }
   .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+  .expand-btn {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--fg-dim);
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  .expand-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  #detail-content.resp-fullscreen > *:not(.response-section) { display: none !important; }
+  #detail-content.resp-fullscreen .response-section { margin-top: 0; }
+  #detail-content.resp-fullscreen .response-body { max-height: calc(100vh - 120px); }
+
   .json-key { color: var(--accent); }
   .json-string { color: var(--get); }
   .json-number { color: var(--ws); }
@@ -2117,6 +2134,7 @@ function showDetail(idx) {
         <span class="response-status" id="resp-status"></span>
         <span class="response-time" id="resp-time"></span>
         <button class="copy-btn" onclick="copyResponse()">Copier</button>
+        <button class="expand-btn" id="expand-btn" onclick="toggleResponseFullscreen()">Agrandir</button>
       </div>
       <div class="response-body">
         <pre id="resp-body"></pre>
@@ -2435,6 +2453,13 @@ function copyCurl(idx) {
 function copyResponse() {
   const text = document.getElementById("resp-body").textContent;
   try { navigator.clipboard.writeText(text); } catch(e) {}
+}
+
+function toggleResponseFullscreen() {
+  const dc = document.getElementById('detail-content');
+  const isOn = dc.classList.toggle('resp-fullscreen');
+  const btn = document.getElementById('expand-btn');
+  if (btn) btn.textContent = isOn ? 'Réduire' : 'Agrandir';
 }
 
 function filterEndpoints() {
