@@ -89,11 +89,19 @@
     font-family: var(--font-display);
     font-size: 15px;
     line-height: 1.5;
+    padding-block: 0;
+    margin: 0;
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app-shell {
+    max-width: 430px;
+    margin: 0 auto;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
     padding-block: 0;
     min-height: 100%;
-    -webkit-font-smoothing: antialiased;
   }
 
   body::before {
@@ -103,6 +111,12 @@
     height: env(safe-area-inset-top, 0px);
     z-index: 100;
     background: var(--bg);
+  }
+
+  @media (min-width: 431px) {
+    body { background: var(--bg-input); }
+    body::before { background: var(--bg-input); }
+    .app-shell { background: var(--bg); }
   }
 
   .app-header {
@@ -560,10 +574,92 @@
     text-align: center;
   }
 
-  @media (max-width: 600px) {
+  @media (min-width: 431px) {
+    .app-shell {
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      min-height: 100vh;
+    }
+  }
+  @media (max-width: 430px) {
     .server-group-header .server-url { display: none; }
   }
+
+  /* Auth guide */
+  .auth-guide { margin: 12px 0; }
+  .auth-guide details {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+  }
+  .auth-guide summary {
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--fg);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .auth-guide summary::before {
+    content: "▸";
+    font-size: 11px;
+    color: var(--fg-muted);
+    transition: transform .15s;
+  }
+  .auth-guide details[open] summary::before { transform: rotate(90deg); }
+  .auth-guide summary::-webkit-details-marker { display: none; }
+  .auth-guide .guide-body {
+    padding: 0 12px 12px;
+    font-size: 13px;
+    color: var(--fg-dim);
+    line-height: 1.6;
+  }
+  .auth-guide .guide-body ol {
+    padding-left: 18px;
+    margin: 6px 0;
+  }
+  .auth-guide .guide-body li { margin-bottom: 6px; }
+  .auth-guide .guide-body code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--bg-input);
+    padding: 1px 5px;
+    border-radius: 3px;
+    word-break: break-all;
+  }
+  .auth-guide .guide-body pre {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    margin: 8px 0;
+    overflow-x: auto;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--fg);
+  }
+  .auth-guide .step-label {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
 </style>
+
+<div class="app-shell">
 
 <div class="app-header">
   <button class="back-btn" id="backBtn" onclick="showList()">Retour</button>
@@ -575,22 +671,99 @@
 </div>
 
 <div id="auth-panel" hidden>
+  <div class="auth-guide">
+    <details open>
+      <summary>Comment obtenir un Firebase ID Token</summary>
+      <div class="guide-body">
+        <p>PlayUs utilise <strong>Google Sign-In → Firebase Auth</strong>. Le token obtenu est un JWT qui autorise toutes les Cloud Functions et l'accès Realtime DB.</p>
+        <ol>
+          <li>
+            <span class="step-label">Option A — depuis le code Android</span><br>
+            Après le sign-in Google, Firebase Auth donne le token :
+            <pre>FirebaseAuth.getInstance()
+  .currentUser
+  ?.getIdToken(true)
+  ?.addOnSuccessListener { result ->
+    val token = result.token
+    // Copier ce token
+  }</pre>
+          </li>
+          <li>
+            <span class="step-label">Option B — via Firebase Auth REST API</span><br>
+            Échanger le Google OAuth token contre un ID Token Firebase :
+            <pre>POST https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=AIzaSyDdKnMbEnIBEkxGYost_Y7vgNuM_YQ_V3A
+
+{
+  "postBody": "id_token=GOOGLE_ID_TOKEN&providerId=google.com",
+  "requestUri": "https://playus.club",
+  "returnIdpCredential": true,
+  "returnSecureToken": true
+}</pre>
+            La réponse contient <code>idToken</code> (JWT ~1200 chars) — c'est le Bearer token.
+          </li>
+          <li>
+            <span class="step-label">Option C — Firebase Auth Emulator (dev)</span><br>
+            Pour le dev local, utiliser l'émulateur Firebase Auth qui génère des tokens de test sans vrai compte Google.
+          </li>
+        </ol>
+        <p><strong>Durée :</strong> Le token expire après 1h. Firebase le refresh automatiquement dans le SDK, mais en usage REST il faut appeler <code>/v1/token?key=API_KEY</code> avec le <code>refreshToken</code>.</p>
+        <pre>POST https://securetoken.googleapis.com/v1/token?key=AIzaSyDdKnMbEnIBEkxGYost_Y7vgNuM_YQ_V3A
+
+grant_type=refresh_token&refresh_token=REFRESH_TOKEN</pre>
+      </div>
+    </details>
+
+    <details>
+      <summary>Comment les Cloud Functions sont appelées</summary>
+      <div class="guide-body">
+        <p>Chaque Cloud Function est un <strong>POST HTTPS</strong> vers :</p>
+        <pre>https://europe-west1-playus-ds.cloudfunctions.net/{functionName}</pre>
+        <p>Avec ces headers :</p>
+        <pre>Authorization: Bearer &lt;FIREBASE_ID_TOKEN&gt;
+Content-Type: application/json</pre>
+        <p>Le body suit le format Firebase Callable :</p>
+        <pre>{"data": {"groupID": "abc123", "score": 42}}</pre>
+        <p>La réponse est au format <code>{"result": {...}}</code>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Authentification Klipy (GIFs)</summary>
+      <div class="guide-body">
+        <p>L'API Klipy utilise une <strong>API Key</strong> en header :</p>
+        <pre>X-API-Key: pk_live_3d1e94e8...
+Origin: https://playus.club</pre>
+        <p>La clé est hardcodée dans l'app. Un <code>customerId</code> identifie chaque utilisateur (généré côté client via <code>getOrCreateKlipyCustomerId</code>).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Authentification Cossistant (Support IA)</summary>
+      <div class="guide-body">
+        <p>Cossistant utilise un <strong>visitorId</strong> (stocké localement dans DataStore sous <code>cossistant:visitor:</code>).</p>
+        <p>Le flux est :</p>
+        <ol>
+          <li>Appeler <code>POST /contacts/identify</code> pour obtenir/créer un contact</li>
+          <li>Utiliser le <code>visitorId</code> retourné dans tous les appels suivants</li>
+          <li>Se connecter au WebSocket <code>wss://...app/ws?visitorId=XXX</code> pour les événements temps réel</li>
+        </ol>
+      </div>
+    </details>
+  </div>
+
   <div class="auth-panel">
-    <h3>Configuration d'authentification</h3>
+    <h3>Tokens</h3>
     <div class="auth-field">
       <label>Firebase ID Token (Bearer)</label>
-      <textarea id="authToken" placeholder="eyJhbGciOiJSUzI1NiIs..." rows="3"></textarea>
-      <div class="auth-hint">Token obtenu via Firebase Auth (Google Sign-In). Utilisé pour les Cloud Functions et la Realtime DB.</div>
+      <textarea id="authToken" placeholder="eyJhbGciOiJSUzI1NiIs..." rows="2"></textarea>
     </div>
     <div class="auth-field">
       <label>Klipy API Key</label>
       <input type="text" id="klipyKey" value="pk_live_3d1e94e8ebcdd1b4e465550b464754950c3b1addbf8c95f8037484726c92449d">
-      <div class="auth-hint">Clé API Klipy pour les endpoints GIF/media.</div>
     </div>
     <div class="auth-field">
       <label>Cossistant Visitor ID</label>
-      <input type="text" id="cossVisitorId" placeholder="Identifiant visiteur Cossistant">
-      <div class="auth-hint">ID du visiteur pour l'API de support Cossistant.</div>
+      <input type="text" id="cossVisitorId" placeholder="Identifiant visiteur">
     </div>
   </div>
 </div>
@@ -610,6 +783,8 @@
 <div id="detail-view">
   <div id="detail-content"></div>
 </div>
+
+</div><!-- /.app-shell -->
 
 <script>
 const API = {
