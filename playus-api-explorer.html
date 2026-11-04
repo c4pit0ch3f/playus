@@ -335,20 +335,20 @@
   .endpoint-info { flex: 1; min-width: 0; }
   .endpoint-path {
     font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .endpoint-desc {
     font-size: 13px;
     font-weight: 500;
     color: var(--fg);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .endpoint-desc {
-    font-size: 12px;
-    color: var(--fg-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-top: 1px;
   }
   .endpoint-card .arrow {
     color: var(--fg-muted);
@@ -618,6 +618,115 @@
     font-size: 10px;
     font-weight: 700;
     flex-shrink: 0;
+  }
+
+  .action-widget {
+    background: var(--bg-card);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .action-widget-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .action-widget-title::before {
+    content: "\25B6";
+    font-size: 10px;
+  }
+  .aw-row {
+    margin-bottom: 10px;
+  }
+  .aw-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--fg-dim);
+    margin-bottom: 4px;
+  }
+  .aw-select, .aw-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--fg);
+    font-family: var(--font-display);
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  .aw-select:focus, .aw-input:focus { border-color: var(--accent); }
+  .aw-hint {
+    font-size: 11px;
+    color: var(--fg-muted);
+    margin-top: 2px;
+    font-style: italic;
+  }
+  .aw-game-info {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    font-size: 12px;
+    color: var(--fg-dim);
+    line-height: 1.5;
+  }
+  .aw-game-info strong { color: var(--fg); }
+  .aw-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .aw-checkbox-row input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+  }
+  .aw-checkbox-row label {
+    font-size: 13px;
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .aw-send-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px;
+    cursor: pointer;
+    margin-top: 8px;
+    position: relative;
+  }
+  .aw-send-btn:hover { filter: brightness(1.1); }
+  .aw-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .aw-log {
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--fg-dim);
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .aw-log .step-ok { color: var(--success); }
+  .aw-log .step-err { color: var(--error); }
+  .aw-log .step-info { color: var(--fg-muted); }
+  .aw-divider {
+    border: none;
+    border-top: 1px dashed var(--border);
+    margin: 12px 0;
   }
 
   #detail-content.resp-fullscreen > *:not(.response-section) { display: none !important; }
@@ -2564,6 +2673,248 @@ const EP_META = {
 };
 const SOURCE_LABELS = { firebase: "CF", firestore: "Firestore", klipy: "Klipy", cossistant: "Cossistant", static: "CDN" };
 
+function buildGameActionWidget() {
+  return `
+    <div class="action-widget" id="game-action-widget">
+      <div class="action-widget-title">Simuler une partie</div>
+      <div class="aw-row">
+        <div class="aw-label">Groupe</div>
+        <select class="aw-select" id="aw-group" onchange="awGroupChanged()">
+          <option value="">Chargement...</option>
+        </select>
+      </div>
+      <div class="aw-row">
+        <div class="aw-label">Date du jeu</div>
+        <div class="autofill-wrap">
+          <input class="aw-input" type="date" id="aw-date" onchange="awDateChanged()">
+        </div>
+        <div class="aw-hint">Sélectionnez une date pour charger le GroupGame associé</div>
+      </div>
+      <div class="aw-row" id="aw-game-row" hidden>
+        <div class="aw-label">Jeu du jour</div>
+        <div class="aw-game-info" id="aw-game-info">—</div>
+      </div>
+      <hr class="aw-divider">
+      <div class="aw-row">
+        <div class="aw-label">Score</div>
+        <input class="aw-input" type="number" id="aw-score" placeholder="Ex: 1500">
+      </div>
+      <div class="aw-row">
+        <div class="aw-label">Durée (ms)</div>
+        <input class="aw-input" type="number" id="aw-duration" placeholder="Optionnel — durée en millisecondes">
+      </div>
+      <div class="aw-row">
+        <div class="aw-label">Combo / Streak</div>
+        <input class="aw-input" type="number" id="aw-combo" placeholder="Optionnel — combo max atteint">
+      </div>
+      <div class="aw-row">
+        <div class="aw-label">Nombre de vies restantes</div>
+        <input class="aw-input" type="number" id="aw-lives" placeholder="Optionnel">
+      </div>
+      <div class="aw-row">
+        <div class="aw-label">Niveau atteint</div>
+        <input class="aw-input" type="number" id="aw-level" placeholder="Optionnel">
+      </div>
+      <div class="aw-row">
+        <div class="aw-label">Nombre de bonnes réponses</div>
+        <input class="aw-input" type="number" id="aw-correct" placeholder="Optionnel">
+      </div>
+      <div class="aw-row">
+        <div class="aw-label">Nombre total de questions</div>
+        <input class="aw-input" type="number" id="aw-total" placeholder="Optionnel">
+      </div>
+      <hr class="aw-divider">
+      <div class="aw-checkbox-row">
+        <input type="checkbox" id="aw-trial"><label for="aw-trial">Essai libre (ne compte pas)</label>
+      </div>
+      <div class="aw-checkbox-row">
+        <input type="checkbox" id="aw-bonus"><label for="aw-bonus">Tentative bonus (pub / dé)</label>
+      </div>
+      <div class="aw-checkbox-row">
+        <input type="checkbox" id="aw-skip-track" checked><label for="aw-skip-track">Appeler trackGameAttempt avant addGameScore</label>
+      </div>
+      <hr class="aw-divider">
+      <button class="aw-send-btn" id="aw-send-btn" onclick="runGameAction()" disabled>Lancer la simulation</button>
+      <div class="aw-log" id="aw-log" hidden></div>
+    </div>`;
+}
+
+let _awGroupGame = null;
+
+async function awInitGroups() {
+  const sel = document.getElementById('aw-group');
+  if (!sel) return;
+  try {
+    const groups = await fetchMyGroups();
+    if (!groups || groups.length === 0) {
+      sel.innerHTML = '<option value="">Connectez-vous d\'abord</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— Choisir un groupe —</option>' +
+      groups.map(g => `<option value="${g.id}">${escHtml(g.name)} (${g.id})</option>`).join('');
+  } catch(e) {
+    sel.innerHTML = `<option value="">Erreur : ${escHtml(e.message)}</option>`;
+  }
+}
+
+function awGroupChanged() {
+  _awGroupGame = null;
+  document.getElementById('aw-game-row').hidden = true;
+  document.getElementById('aw-game-info').textContent = '—';
+  awCheckReady();
+  const d = document.getElementById('aw-date').value;
+  if (d && document.getElementById('aw-group').value) awDateChanged();
+}
+
+async function awDateChanged() {
+  const groupId = document.getElementById('aw-group').value;
+  const gameDay = document.getElementById('aw-date').value;
+  if (!groupId || !gameDay) return;
+  _awGroupGame = null;
+  const row = document.getElementById('aw-game-row');
+  const info = document.getElementById('aw-game-info');
+  row.hidden = false;
+  info.innerHTML = '<em>Recherche du GroupGame...</em>';
+  awCheckReady();
+
+  try {
+    const token = document.getElementById('authToken').value.trim();
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/playus-ds/databases/(default)/documents/Group/${groupId}:runQuery`,
+      { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'GroupGame', allDescendants: false }],
+          where: { fieldFilter: { field: { fieldPath: 'gameDay' }, op: 'EQUAL', value: { stringValue: gameDay } } }, limit: 1 } }) }
+    );
+    const data = await res.json();
+    const docs = Array.isArray(data) ? data.filter(r => r.document) : [];
+    if (docs.length === 0) {
+      info.innerHTML = '<strong style="color:var(--error)">Aucun GroupGame trouvé pour cette date.</strong> Vérifiez que requestGame a été appelé.';
+      return;
+    }
+    const d = docs[0].document;
+    const f = d.fields || {};
+    const ggId = d.name.split('/').pop();
+    const gameId = f.gameId ? (f.gameId.stringValue || '') : '';
+    const gameName = f.gameName ? (f.gameName.stringValue || '') : (f.name ? (f.name.stringValue || '') : '');
+    const status = f.status ? (f.status.stringValue || '') : '';
+    _awGroupGame = { id: ggId, gameId, gameName, groupId, fields: f };
+    info.innerHTML = `<strong>${escHtml(gameName || gameId)}</strong><br>` +
+      `GroupGame ID : <code>${escHtml(ggId)}</code><br>` +
+      `Game ID : <code>${escHtml(gameId)}</code>` +
+      (status ? `<br>Status : ${escHtml(status)}` : '');
+    awCheckReady();
+  } catch(e) {
+    info.innerHTML = `<strong style="color:var(--error)">Erreur : ${escHtml(e.message)}</strong>`;
+  }
+}
+
+function awCheckReady() {
+  const btn = document.getElementById('aw-send-btn');
+  if (!btn) return;
+  const groupId = document.getElementById('aw-group').value;
+  const score = document.getElementById('aw-score').value;
+  btn.disabled = !groupId || !score || !_awGroupGame;
+}
+
+async function runGameAction() {
+  const btn = document.getElementById('aw-send-btn');
+  const log = document.getElementById('aw-log');
+  btn.disabled = true;
+  log.hidden = false;
+  log.innerHTML = '';
+
+  const groupId = document.getElementById('aw-group').value;
+  const score = Number(document.getElementById('aw-score').value);
+  const doTrack = document.getElementById('aw-skip-track').checked;
+  const gameId = _awGroupGame.gameId;
+  const groupGameId = _awGroupGame.id;
+
+  const optionals = {};
+  const duration = document.getElementById('aw-duration').value;
+  const combo = document.getElementById('aw-combo').value;
+  const lives = document.getElementById('aw-lives').value;
+  const level = document.getElementById('aw-level').value;
+  const correct = document.getElementById('aw-correct').value;
+  const total = document.getElementById('aw-total').value;
+  const isTrial = document.getElementById('aw-trial').checked;
+  const isBonus = document.getElementById('aw-bonus').checked;
+  if (duration) optionals.duration = Number(duration);
+  if (combo) optionals.combo = Number(combo);
+  if (lives) optionals.livesRemaining = Number(lives);
+  if (level) optionals.level = Number(level);
+  if (correct) optionals.correctAnswers = Number(correct);
+  if (total) optionals.totalQuestions = Number(total);
+  if (isTrial) optionals.isTrial = true;
+  if (isBonus) optionals.isBonus = true;
+
+  function addLog(cls, msg) {
+    log.innerHTML += `<div class="${cls}">${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  let attemptID = null;
+
+  if (doTrack) {
+    addLog('step-info', '1. trackGameAttempt...');
+    try {
+      const trackParams = { groupID: groupId };
+      if (gameId) trackParams.gameId = gameId;
+      if (fbFunctions) {
+        const callable = fbFunctions.httpsCallable('trackGameAttempt');
+        const r = await callable(trackParams);
+        attemptID = r.data && r.data.attemptID ? r.data.attemptID : null;
+        addLog('step-ok', `   OK — attemptID: ${attemptID || '(non fourni)'}`);
+        if (r.data) addLog('step-info', '   ' + JSON.stringify(r.data));
+      } else {
+        const token = document.getElementById('authToken').value.trim();
+        const res = await fetch('https://europe-west1-playus-ds.cloudfunctions.net/trackGameAttempt', {
+          method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: trackParams })
+        });
+        const body = await res.json();
+        attemptID = body.result && body.result.attemptID ? body.result.attemptID : null;
+        addLog(res.ok ? 'step-ok' : 'step-err', `   ${res.status} — attemptID: ${attemptID || '(non fourni)'}`);
+        addLog('step-info', '   ' + JSON.stringify(body));
+      }
+    } catch(e) {
+      addLog('step-err', `   Erreur trackGameAttempt : ${e.message}`);
+    }
+  } else {
+    addLog('step-info', '1. trackGameAttempt — ignoré');
+  }
+
+  addLog('step-info', '2. addGameScore...');
+  try {
+    const scoreParams = { groupID: groupId, score };
+    if (gameId) scoreParams.gameId = gameId;
+    if (groupGameId) scoreParams.groupGameId = groupGameId;
+    if (attemptID) scoreParams.attemptID = attemptID;
+    Object.assign(scoreParams, optionals);
+
+    addLog('step-info', '   Params : ' + JSON.stringify(scoreParams));
+
+    if (fbFunctions) {
+      const callable = fbFunctions.httpsCallable('addGameScore');
+      const r = await callable(scoreParams);
+      addLog('step-ok', '   OK — Score soumis !');
+      addLog('step-info', '   ' + JSON.stringify(r.data, null, 2));
+    } else {
+      const token = document.getElementById('authToken').value.trim();
+      const res = await fetch('https://europe-west1-playus-ds.cloudfunctions.net/addGameScore', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: scoreParams })
+      });
+      const body = await res.json();
+      addLog(res.ok ? 'step-ok' : 'step-err', `   ${res.status}`);
+      addLog('step-info', '   ' + JSON.stringify(body, null, 2));
+    }
+  } catch(e) {
+    addLog('step-err', `   Erreur addGameScore : ${e.message}${e.details ? '\n   ' + JSON.stringify(e.details) : ''}`);
+  }
+
+  btn.disabled = false;
+}
+
 function render() {
   const container = document.getElementById("endpoint-groups");
   let totalEndpoints = 0;
@@ -2594,13 +2945,18 @@ function render() {
               <span class="source-badge">${srcLabel}</span>
               ${flowHtml}
               <div class="endpoint-info">
-                <div class="endpoint-path">${ep.path}</div>
                 <div class="endpoint-desc">${ep.description}</div>
+                <div class="endpoint-path">${ep.path}</div>
               </div>
               <span class="arrow">&#8250;</span>
             </div>`;
         }).join("")}
       </div>`;
+    if (sec.key === 'gameplay') {
+      const widgetDiv = document.createElement('div');
+      widgetDiv.innerHTML = buildGameActionWidget();
+      group.querySelector('.endpoint-list').before(widgetDiv.firstElementChild);
+    }
     container.appendChild(group);
   });
 
@@ -2610,6 +2966,9 @@ function render() {
   `;
 
   updateAuthDot();
+  awInitGroups();
+  document.getElementById('aw-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('aw-score').addEventListener('input', awCheckReady);
 }
 
 function updateAuthDot() {
