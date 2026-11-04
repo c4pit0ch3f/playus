@@ -585,6 +585,8 @@
     font-style: italic;
   }
   .server-group.collapsed .section-desc { display: none; }
+  .server-group.collapsed .action-widget,
+  .server-group.collapsed .patch-widget { display: none; }
   .curl-details { margin-top: 20px; }
   .curl-details summary {
     font-size: 11px;
@@ -728,6 +730,32 @@
     border-top: 1px dashed var(--border);
     margin: 12px 0;
   }
+
+  .patch-widget {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    margin: 8px 0;
+  }
+  .patch-widget > summary {
+    padding: 12px 16px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .patch-widget > summary::-webkit-details-marker { display: none; }
+  .patch-widget > summary::before {
+    content: "\25B8";
+    color: var(--fg-muted);
+    transition: transform .15s;
+  }
+  .patch-widget[open] > summary::before { transform: rotate(90deg); }
+  .patch-widget[open] > summary { padding-bottom: 0; }
+  .patch-widget > div { padding: 0 16px 16px; }
 
   #detail-content.resp-fullscreen > *:not(.response-section) { display: none !important; }
   #detail-content.resp-fullscreen .response-section { margin-top: 0; }
@@ -1814,13 +1842,13 @@ const API = {
       description: "Parties d'un groupe — GroupGame par gameDay",
       params: [
         { name: "groupId", type: "string", required: true, description: "ID du groupe" },
-        { name: "gameDay", type: "string", required: true, description: "Date du jour de jeu (ex: 2026-11-04)" }
+        { name: "gameDay", type: "string", required: true, description: "Date du jour de jeu (ex: 2026-11-04T00:00:00Z)" }
       ],
       notes: "Sous-collection Group/{groupId}/GroupGame filtrée par gameDay. L'app filtre aussi avec limit().",
       firestoreQuery: {
         structuredQuery: {
           from: [{ collectionId: "GroupGame", allDescendants: false }],
-          where: { fieldFilter: { field: { fieldPath: "gameDay" }, op: "EQUAL", value: { stringValue: "$gameDay" } } },
+          where: { fieldFilter: { field: { fieldPath: "gameDay" }, op: "EQUAL", value: { timestampValue: "$gameDay" } } },
           limit: 50
         },
         parent: "projects/playus-ds/databases/(default)/documents/Group/$groupId"
@@ -2242,7 +2270,7 @@ function showDetail(idx) {
       if (isUid) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();fillUidField('${inputId}')">Mon UID</button>`;
       else if (isGroup) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGroupDropdown(this,'${inputId}')">Mes groupes</button>`;
       else if (isGame) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGameDropdown(this,'${inputId}')">Jeux</button>`;
-      else if (isGameDay) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();document.getElementById('${inputId}').value=new Date().toISOString().slice(0,10);document.getElementById('${inputId}').dispatchEvent(new Event('input'))">Aujourd'hui</button>`;
+      else if (isGameDay) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();document.getElementById('${inputId}').value=new Date().toISOString().slice(0,10)+'T00:00:00Z';document.getElementById('${inputId}').dispatchEvent(new Event('input'))">Aujourd'hui</button>`;
       const inputHtml = afBtn
         ? `<div class="autofill-wrap"><input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">${afBtn}</div>`
         : `<input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">`;
@@ -2675,71 +2703,109 @@ const SOURCE_LABELS = { firebase: "CF", firestore: "Firestore", klipy: "Klipy", 
 
 function buildGameActionWidget() {
   return `
-    <div class="action-widget" id="game-action-widget">
-      <div class="action-widget-title">Simuler une partie</div>
-      <div class="aw-row">
-        <div class="aw-label">Groupe</div>
-        <select class="aw-select" id="aw-group" onchange="awGroupChanged()">
-          <option value="">Chargement...</option>
-        </select>
-      </div>
-      <div class="aw-row">
-        <div class="aw-label">Date du jeu</div>
-        <div class="autofill-wrap">
-          <input class="aw-input" type="date" id="aw-date" onchange="awDateChanged()">
+    <details class="action-widget" id="game-action-widget">
+      <summary class="action-widget-title" style="cursor:pointer">Simuler une partie</summary>
+      <div style="padding-top:8px">
+        <div class="aw-row">
+          <div class="aw-label">Groupe</div>
+          <select class="aw-select" id="aw-group" onchange="awGroupChanged()">
+            <option value="">Chargement...</option>
+          </select>
         </div>
-        <div class="aw-hint">Sélectionnez une date pour charger le GroupGame associé</div>
+        <div class="aw-row" id="aw-gg-row" hidden>
+          <div class="aw-label">Partie (GroupGame)</div>
+          <select class="aw-select" id="aw-gg" onchange="awGGChanged()">
+            <option value="">—</option>
+          </select>
+          <div class="aw-hint" id="aw-gg-hint"></div>
+        </div>
+        <div class="aw-row" id="aw-game-row" hidden>
+          <div class="aw-label">Jeu du jour</div>
+          <div class="aw-game-info" id="aw-game-info">—</div>
+        </div>
+        <div id="aw-params-section" hidden>
+          <hr class="aw-divider">
+          <div id="aw-dynamic-params"></div>
+          <hr class="aw-divider">
+          <div class="aw-checkbox-row">
+            <input type="checkbox" id="aw-trial"><label for="aw-trial">Essai libre (ne compte pas)</label>
+          </div>
+          <div class="aw-checkbox-row">
+            <input type="checkbox" id="aw-bonus"><label for="aw-bonus">Tentative bonus (pub / dé)</label>
+          </div>
+          <div class="aw-checkbox-row">
+            <input type="checkbox" id="aw-skip-track" checked><label for="aw-skip-track">Appeler trackGameAttempt avant</label>
+          </div>
+          <hr class="aw-divider">
+          <button class="aw-send-btn" id="aw-send-btn" onclick="runGameAction()" disabled>Lancer la simulation</button>
+        </div>
+        <div class="aw-log" id="aw-log" hidden></div>
       </div>
-      <div class="aw-row" id="aw-game-row" hidden>
-        <div class="aw-label">Jeu du jour</div>
-        <div class="aw-game-info" id="aw-game-info">—</div>
-      </div>
-      <hr class="aw-divider">
-      <div class="aw-row">
-        <div class="aw-label">Score</div>
-        <input class="aw-input" type="number" id="aw-score" placeholder="Ex: 1500">
-      </div>
-      <div class="aw-row">
-        <div class="aw-label">Durée (ms)</div>
-        <input class="aw-input" type="number" id="aw-duration" placeholder="Optionnel — durée en millisecondes">
-      </div>
-      <div class="aw-row">
-        <div class="aw-label">Combo / Streak</div>
-        <input class="aw-input" type="number" id="aw-combo" placeholder="Optionnel — combo max atteint">
-      </div>
-      <div class="aw-row">
-        <div class="aw-label">Nombre de vies restantes</div>
-        <input class="aw-input" type="number" id="aw-lives" placeholder="Optionnel">
-      </div>
-      <div class="aw-row">
-        <div class="aw-label">Niveau atteint</div>
-        <input class="aw-input" type="number" id="aw-level" placeholder="Optionnel">
-      </div>
-      <div class="aw-row">
-        <div class="aw-label">Nombre de bonnes réponses</div>
-        <input class="aw-input" type="number" id="aw-correct" placeholder="Optionnel">
-      </div>
-      <div class="aw-row">
-        <div class="aw-label">Nombre total de questions</div>
-        <input class="aw-input" type="number" id="aw-total" placeholder="Optionnel">
-      </div>
-      <hr class="aw-divider">
-      <div class="aw-checkbox-row">
-        <input type="checkbox" id="aw-trial"><label for="aw-trial">Essai libre (ne compte pas)</label>
-      </div>
-      <div class="aw-checkbox-row">
-        <input type="checkbox" id="aw-bonus"><label for="aw-bonus">Tentative bonus (pub / dé)</label>
-      </div>
-      <div class="aw-checkbox-row">
-        <input type="checkbox" id="aw-skip-track" checked><label for="aw-skip-track">Appeler trackGameAttempt avant addGameScore</label>
-      </div>
-      <hr class="aw-divider">
-      <button class="aw-send-btn" id="aw-send-btn" onclick="runGameAction()" disabled>Lancer la simulation</button>
-      <div class="aw-log" id="aw-log" hidden></div>
-    </div>`;
+    </details>`;
 }
 
 let _awGroupGame = null;
+let _awGroupGames = [];
+
+const GAME_PARAMS = {
+  _default: [
+    { key: 'score', label: 'Score', type: 'number', ph: '1500', required: true }
+  ],
+  quiz: [
+    { key: 'score', label: 'Score', type: 'number', ph: '8', required: true },
+    { key: 'correctAnswers', label: 'Bonnes réponses', type: 'number', ph: '8' },
+    { key: 'totalQuestions', label: 'Total de questions', type: 'number', ph: '10' },
+    { key: 'duration', label: 'Durée (ms)', type: 'number', ph: '45000' }
+  ],
+  speed: [
+    { key: 'score', label: 'Score', type: 'number', ph: '3200', required: true },
+    { key: 'duration', label: 'Temps (ms)', type: 'number', ph: '12340' },
+    { key: 'combo', label: 'Combo max', type: 'number', ph: '15' }
+  ],
+  memory: [
+    { key: 'score', label: 'Score', type: 'number', ph: '2400', required: true },
+    { key: 'duration', label: 'Durée (ms)', type: 'number', ph: '60000' },
+    { key: 'level', label: 'Niveau atteint', type: 'number', ph: '7' },
+    { key: 'combo', label: 'Combo max', type: 'number', ph: '12' }
+  ],
+  puzzle: [
+    { key: 'score', label: 'Score', type: 'number', ph: '5000', required: true },
+    { key: 'duration', label: 'Durée (ms)', type: 'number', ph: '90000' },
+    { key: 'level', label: 'Niveau atteint', type: 'number', ph: '5' }
+  ],
+  survival: [
+    { key: 'score', label: 'Score', type: 'number', ph: '4200', required: true },
+    { key: 'duration', label: 'Survie (ms)', type: 'number', ph: '120000' },
+    { key: 'livesRemaining', label: 'Vies restantes', type: 'number', ph: '1' },
+    { key: 'level', label: 'Niveau atteint', type: 'number', ph: '12' },
+    { key: 'combo', label: 'Combo max', type: 'number', ph: '20' }
+  ],
+  clicker: [
+    { key: 'score', label: 'Score (clics)', type: 'number', ph: '187', required: true },
+    { key: 'duration', label: 'Durée (ms)', type: 'number', ph: '10000' }
+  ]
+};
+
+function guessGameCategory(gameFields, gameName) {
+  const cat = (gameFields.category ? (gameFields.category.stringValue || '') : '').toLowerCase();
+  const name = (gameName || '').toLowerCase();
+  if (cat.includes('quiz') || name.includes('quiz') || name.includes('question')) return 'quiz';
+  if (cat.includes('speed') || name.includes('speed') || name.includes('rapid') || name.includes('vite')) return 'speed';
+  if (cat.includes('memory') || cat.includes('memo') || name.includes('memo') || name.includes('memory')) return 'memory';
+  if (cat.includes('puzzle') || name.includes('puzzle') || name.includes('casse')) return 'puzzle';
+  if (cat.includes('surviv') || name.includes('surviv') || name.includes('endless')) return 'survival';
+  if (cat.includes('click') || cat.includes('tap') || name.includes('click') || name.includes('tap')) return 'clicker';
+  return '_default';
+}
+
+function awRenderParams(category) {
+  const params = GAME_PARAMS[category] || GAME_PARAMS._default;
+  return params.map(p => `
+    <div class="aw-row">
+      <div class="aw-label">${p.label}${p.required ? ' *' : ''}</div>
+      <input class="aw-input" type="number" id="aw-p-${p.key}" placeholder="${p.ph}" oninput="awCheckReady()">
+    </div>`).join('');
+}
 
 async function awInitGroups() {
   const sel = document.getElementById('aw-group');
@@ -2757,25 +2823,20 @@ async function awInitGroups() {
   }
 }
 
-function awGroupChanged() {
+async function awGroupChanged() {
   _awGroupGame = null;
+  _awGroupGames = [];
   document.getElementById('aw-game-row').hidden = true;
-  document.getElementById('aw-game-info').textContent = '—';
-  awCheckReady();
-  const d = document.getElementById('aw-date').value;
-  if (d && document.getElementById('aw-group').value) awDateChanged();
-}
-
-async function awDateChanged() {
+  document.getElementById('aw-params-section').hidden = true;
+  const ggRow = document.getElementById('aw-gg-row');
+  const ggSel = document.getElementById('aw-gg');
+  const ggHint = document.getElementById('aw-gg-hint');
   const groupId = document.getElementById('aw-group').value;
-  const gameDay = document.getElementById('aw-date').value;
-  if (!groupId || !gameDay) return;
-  _awGroupGame = null;
-  const row = document.getElementById('aw-game-row');
-  const info = document.getElementById('aw-game-info');
-  row.hidden = false;
-  info.innerHTML = '<em>Recherche du GroupGame...</em>';
-  awCheckReady();
+  if (!groupId) { ggRow.hidden = true; return; }
+
+  ggRow.hidden = false;
+  ggSel.innerHTML = '<option value="">Chargement des parties...</option>';
+  ggHint.textContent = '';
 
   try {
     const token = document.getElementById('authToken').value.trim();
@@ -2783,37 +2844,74 @@ async function awDateChanged() {
       `https://firestore.googleapis.com/v1/projects/playus-ds/databases/(default)/documents/Group/${groupId}:runQuery`,
       { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'GroupGame', allDescendants: false }],
-          where: { fieldFilter: { field: { fieldPath: 'gameDay' }, op: 'EQUAL', value: { stringValue: gameDay } } }, limit: 1 } }) }
+          orderBy: [{ field: { fieldPath: 'updatedAt' }, direction: 'DESCENDING' }], limit: 30 } }) }
     );
     const data = await res.json();
     const docs = Array.isArray(data) ? data.filter(r => r.document) : [];
     if (docs.length === 0) {
-      info.innerHTML = '<strong style="color:var(--error)">Aucun GroupGame trouvé pour cette date.</strong> Vérifiez que requestGame a été appelé.';
+      ggSel.innerHTML = '<option value="">Aucune partie trouvée</option>';
+      ggHint.textContent = 'Appelez requestGame pour créer une partie.';
       return;
     }
-    const d = docs[0].document;
-    const f = d.fields || {};
-    const ggId = d.name.split('/').pop();
-    const gameId = f.gameId ? (f.gameId.stringValue || '') : '';
-    const gameName = f.gameName ? (f.gameName.stringValue || '') : (f.name ? (f.name.stringValue || '') : '');
-    const status = f.status ? (f.status.stringValue || '') : '';
-    _awGroupGame = { id: ggId, gameId, gameName, groupId, fields: f };
-    info.innerHTML = `<strong>${escHtml(gameName || gameId)}</strong><br>` +
-      `GroupGame ID : <code>${escHtml(ggId)}</code><br>` +
-      `Game ID : <code>${escHtml(gameId)}</code>` +
-      (status ? `<br>Status : ${escHtml(status)}` : '');
-    awCheckReady();
+    _awGroupGames = docs.map(r => {
+      const d = r.document, f = d.fields || {}, id = d.name.split('/').pop();
+      const gameId = f.gameId ? (f.gameId.stringValue || '') : '';
+      const gameName = f.gameName ? (f.gameName.stringValue || '') : (f.name ? (f.name.stringValue || '') : gameId);
+      const gameDay = f.gameDay ? (f.gameDay.timestampValue || f.gameDay.stringValue || '') : '';
+      const dayStr = gameDay ? gameDay.slice(0, 10) : '?';
+      const status = f.status ? (f.status.stringValue || '') : '';
+      return { id, gameId, gameName, gameDay: dayStr, status, fields: f, groupId };
+    });
+    ggSel.innerHTML = '<option value="">— Choisir une partie —</option>' +
+      _awGroupGames.map((g, i) => `<option value="${i}">${g.gameDay} — ${escHtml(g.gameName)}${g.status ? ' [' + g.status + ']' : ''}</option>`).join('');
+    ggHint.textContent = `${_awGroupGames.length} parties chargées (les plus récentes)`;
   } catch(e) {
-    info.innerHTML = `<strong style="color:var(--error)">Erreur : ${escHtml(e.message)}</strong>`;
+    ggSel.innerHTML = `<option value="">Erreur</option>`;
+    ggHint.textContent = e.message;
   }
+}
+
+async function awGGChanged() {
+  const idx = document.getElementById('aw-gg').value;
+  if (idx === '') {
+    _awGroupGame = null;
+    document.getElementById('aw-game-row').hidden = true;
+    document.getElementById('aw-params-section').hidden = true;
+    return;
+  }
+  const gg = _awGroupGames[Number(idx)];
+  _awGroupGame = gg;
+  const info = document.getElementById('aw-game-info');
+  document.getElementById('aw-game-row').hidden = false;
+  info.innerHTML = `<strong>${escHtml(gg.gameName || gg.gameId)}</strong><br>` +
+    `GroupGame ID : <code>${escHtml(gg.id)}</code><br>` +
+    `Game ID : <code>${escHtml(gg.gameId)}</code><br>` +
+    `Date : ${escHtml(gg.gameDay)}` +
+    (gg.status ? ` — Status : ${escHtml(gg.status)}` : '');
+
+  let gameFields = gg.fields;
+  if (gg.gameId) {
+    try {
+      const games = await fetchAllGames();
+      const match = games ? games.find(g => g.id === gg.gameId) : null;
+      if (match && match.category) gameFields._resolvedCategory = match.category;
+    } catch(e) {}
+  }
+  const category = gameFields._resolvedCategory
+    ? guessGameCategory({ category: { stringValue: gameFields._resolvedCategory } }, gg.gameName)
+    : guessGameCategory(gg.fields, gg.gameName);
+
+  document.getElementById('aw-dynamic-params').innerHTML = awRenderParams(category);
+  document.getElementById('aw-params-section').hidden = false;
+  info.innerHTML += `<br><span style="font-size:11px;color:var(--fg-muted)">Profil de params : <strong>${category === '_default' ? 'générique' : category}</strong></span>`;
+  awCheckReady();
 }
 
 function awCheckReady() {
   const btn = document.getElementById('aw-send-btn');
   if (!btn) return;
-  const groupId = document.getElementById('aw-group').value;
-  const score = document.getElementById('aw-score').value;
-  btn.disabled = !groupId || !score || !_awGroupGame;
+  const scoreEl = document.getElementById('aw-p-score');
+  btn.disabled = !_awGroupGame || !scoreEl || !scoreEl.value;
 }
 
 async function runGameAction() {
@@ -2823,29 +2921,22 @@ async function runGameAction() {
   log.hidden = false;
   log.innerHTML = '';
 
-  const groupId = document.getElementById('aw-group').value;
-  const score = Number(document.getElementById('aw-score').value);
-  const doTrack = document.getElementById('aw-skip-track').checked;
+  const groupId = _awGroupGame.groupId;
   const gameId = _awGroupGame.gameId;
   const groupGameId = _awGroupGame.id;
+  const doTrack = document.getElementById('aw-skip-track').checked;
 
-  const optionals = {};
-  const duration = document.getElementById('aw-duration').value;
-  const combo = document.getElementById('aw-combo').value;
-  const lives = document.getElementById('aw-lives').value;
-  const level = document.getElementById('aw-level').value;
-  const correct = document.getElementById('aw-correct').value;
-  const total = document.getElementById('aw-total').value;
-  const isTrial = document.getElementById('aw-trial').checked;
-  const isBonus = document.getElementById('aw-bonus').checked;
-  if (duration) optionals.duration = Number(duration);
-  if (combo) optionals.combo = Number(combo);
-  if (lives) optionals.livesRemaining = Number(lives);
-  if (level) optionals.level = Number(level);
-  if (correct) optionals.correctAnswers = Number(correct);
-  if (total) optionals.totalQuestions = Number(total);
-  if (isTrial) optionals.isTrial = true;
-  if (isBonus) optionals.isBonus = true;
+  const scoreParams = { groupID: groupId };
+  if (gameId) scoreParams.gameId = gameId;
+  if (groupGameId) scoreParams.groupGameId = groupGameId;
+
+  document.querySelectorAll('[id^="aw-p-"]').forEach(el => {
+    const key = el.id.replace('aw-p-', '');
+    const val = el.value.trim();
+    if (val) scoreParams[key] = Number(val);
+  });
+  if (document.getElementById('aw-trial').checked) scoreParams.isTrial = true;
+  if (document.getElementById('aw-bonus').checked) scoreParams.isBonus = true;
 
   function addLog(cls, msg) {
     log.innerHTML += `<div class="${cls}">${msg}</div>`;
@@ -2883,16 +2974,11 @@ async function runGameAction() {
     addLog('step-info', '1. trackGameAttempt — ignoré');
   }
 
+  if (attemptID) scoreParams.attemptID = attemptID;
+
   addLog('step-info', '2. addGameScore...');
+  addLog('step-info', '   Params : ' + JSON.stringify(scoreParams));
   try {
-    const scoreParams = { groupID: groupId, score };
-    if (gameId) scoreParams.gameId = gameId;
-    if (groupGameId) scoreParams.groupGameId = groupGameId;
-    if (attemptID) scoreParams.attemptID = attemptID;
-    Object.assign(scoreParams, optionals);
-
-    addLog('step-info', '   Params : ' + JSON.stringify(scoreParams));
-
     if (fbFunctions) {
       const callable = fbFunctions.httpsCallable('addGameScore');
       const r = await callable(scoreParams);
@@ -2927,7 +3013,7 @@ function render() {
     totalEndpoints += eps.length;
 
     const group = document.createElement("div");
-    group.className = "server-group";
+    group.className = "server-group collapsed";
     group.innerHTML = `
       <div class="server-group-header" onclick="this.parentElement.classList.toggle('collapsed')">
         <h2>${sec.name} <span style="font-weight:400;color:var(--fg-muted)">(${eps.length})</span></h2>
@@ -2967,8 +3053,6 @@ function render() {
 
   updateAuthDot();
   awInitGroups();
-  document.getElementById('aw-date').value = new Date().toISOString().slice(0, 10);
-  document.getElementById('aw-score').addEventListener('input', awCheckReady);
 }
 
 function updateAuthDot() {
