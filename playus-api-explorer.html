@@ -1049,15 +1049,28 @@ function updateExpiryDisplay() {
 setInterval(updateExpiryDisplay, 30000);
 
 async function refreshFirebaseToken() {
-  if (fbAuth && fbAuth.currentUser) {
+  document.getElementById('signin-error').hidden = true;
+
+  if (fbAuth) {
     try {
-      const idToken = await fbAuth.currentUser.getIdToken(true);
+      const provider = new firebase.auth.GoogleAuthProvider();
+      const result = await fbAuth.signInWithPopup(provider);
+      const idToken = await result.user.getIdToken();
       document.getElementById('authToken').value = idToken;
       tokenExpiryTime = Date.now() + 3600000;
-      updateExpiryDisplay();
+      showConnectedState({
+        displayName: result.user.displayName,
+        email: result.user.email,
+        photoUrl: result.user.photoURL,
+        uid: result.user.uid
+      });
       updateAuthDot();
       return;
-    } catch(e) { console.warn('SDK refresh failed:', e); }
+    } catch(e) {
+      console.warn('Popup refresh failed:', e);
+      showSignInError('Impossible de rafraîchir : ' + (e.message || e.code) + ' — Cliquez sur Déconnexion puis reconnectez-vous.');
+    }
+    return;
   }
 
   if (!firebaseRefreshToken) {
