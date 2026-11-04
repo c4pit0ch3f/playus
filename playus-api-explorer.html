@@ -911,6 +911,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
 <script>
 const FIREBASE_API_KEY = 'AIzaSyDdKnMbEnIBEkxGYost_Y7vgNuM_YQ_V3A';
 const GOOGLE_CLIENT_ID = '978176341853-ihnmmilj0eiig5q1i074g8ji76am5o5m.apps.googleusercontent.com';
@@ -919,6 +920,7 @@ const REDIRECT_URI = 'https://playus-ds.firebaseapp.com/__/auth/handler';
 let firebaseRefreshToken = null;
 let tokenExpiryTime = null;
 let fbAuth = null;
+let fbFunctions = null;
 
 try {
   if (typeof firebase !== 'undefined') {
@@ -931,6 +933,9 @@ try {
       databaseURL: 'https://playus-ds-default-rtdb.europe-west1.firebasedatabase.app'
     });
     fbAuth = firebase.auth();
+    if (firebase.functions) {
+      fbFunctions = firebase.app().functions('europe-west1');
+    }
   }
 } catch(e) { console.warn('Firebase SDK init:', e); }
 
@@ -1915,6 +1920,24 @@ async function sendRequest(idx) {
   }
 
   const t0 = performance.now();
+
+  if (isCall && fbFunctions) {
+    try {
+      const fnName = ep.path.replace(/^\//, '');
+      const callable = fbFunctions.httpsCallable(fnName);
+      const result = await callable(params.body);
+      const dt = Math.round(performance.now() - t0);
+      showResponse(200, JSON.stringify(result.data, null, 2), dt);
+    } catch (e) {
+      const dt = Math.round(performance.now() - t0);
+      const detail = e.details ? "\n\nDétails : " + JSON.stringify(e.details, null, 2) : "";
+      showResponse(e.code === "unauthenticated" ? 401 : 0, "Erreur callable : [" + (e.code || "unknown") + "] " + e.message + detail, dt);
+    }
+    btn.classList.remove("loading");
+    btn.disabled = false;
+    return;
+  }
+
   try {
     const res = await fetch(url, fetchOpts);
     const dt = Math.round(performance.now() - t0);
