@@ -1733,8 +1733,12 @@ const API = {
       server: "firebase", method: "CALL", path: "/purchaseDice",
       description: "Acheter des dés (tentatives supplémentaires)",
       params: [
-        { name: "type", type: "string", required: true, description: "Type de dé (DiceProductType)" },
-        { name: "groupId", type: "string", required: false, description: "ID du groupe cible" }
+        { name: "type", type: "string", required: true, description: "Type d'achat : group, gift, etc. (sourceType)" },
+        { name: "amount", type: "number", required: true, description: "Quantité de dés" },
+        { name: "productId", type: "string", required: true, description: "ID du produit (ex: research_invalid_product)" },
+        { name: "transactionId", type: "string", required: true, description: "ID de transaction unique (UUID)" },
+        { name: "groupId", type: "string", required: false, description: "ID du groupe cible" },
+        { name: "targetUserId", type: "string", required: false, description: "ID du destinataire (si type=gift)" }
       ]
     },
     {
