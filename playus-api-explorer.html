@@ -1735,8 +1735,8 @@ const API = {
       params: [
         { name: "type", type: "string", required: true, description: "Type d'achat : group, gift, etc. (sourceType)" },
         { name: "amount", type: "number", required: true, description: "Quantité de dés" },
-        { name: "productId", type: "string", required: true, description: "ID du produit (ex: research_invalid_product)" },
-        { name: "transactionId", type: "string", required: true, description: "ID de transaction unique (UUID)" },
+        { name: "productID", type: "string", required: true, description: "ID du produit (ex: research_invalid_product)" },
+        { name: "transactionID", type: "string", required: true, description: "ID de transaction unique (UUID)" },
         { name: "groupId", type: "string", required: false, description: "ID du groupe cible" },
         { name: "targetUserId", type: "string", required: false, description: "ID du destinataire (si type=gift)" }
       ]
@@ -2275,12 +2275,14 @@ function showDetail(idx) {
       const isGroup = /^(groupid)$/.test(pLow);
       const isGame = /^(gameid)$/.test(pLow);
       const isGameDay = pLow === 'gameday';
+      const isTransactionId = /^transactionid$/i.test(p.name);
       const inputId = `param-${idx}-${i}`;
       let afBtn = '';
       if (isUid) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();fillUidField('${inputId}')">Mon UID</button>`;
       else if (isGroup) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGroupDropdown(this,'${inputId}')">Mes groupes</button>`;
       else if (isGame) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGameDropdown(this,'${inputId}')">Jeux</button>`;
       else if (isGameDay) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();document.getElementById('${inputId}').value=new Date().toISOString().slice(0,10)+'T00:00:00Z';document.getElementById('${inputId}').dispatchEvent(new Event('input'))">Aujourd'hui</button>`;
+      else if (isTransactionId) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();document.getElementById('${inputId}').value=crypto.randomUUID();document.getElementById('${inputId}').dispatchEvent(new Event('input'))">UUID</button>`;
       const inputHtml = afBtn
         ? `<div class="autofill-wrap"><input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">${afBtn}</div>`
         : `<input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">`;
