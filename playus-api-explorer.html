@@ -1733,7 +1733,7 @@ const API = {
       server: "firebase", method: "CALL", path: "/purchaseDice",
       description: "Acheter des dés (tentatives supplémentaires)",
       params: [
-        { name: "type", type: "string", required: true, description: "Type d'achat : group, gift, etc. (sourceType)" },
+        { name: "type", type: "string", required: true, description: "Type d'achat (sourceType)", options: ["personal", "group", "gift"] },
         { name: "amount", type: "number", required: true, description: "Quantité de dés" },
         { name: "productID", type: "string", required: true, description: "ID du produit (ex: research_invalid_product)" },
         { name: "transactionID", type: "string", required: true, description: "ID de transaction unique (UUID)" },
@@ -2283,9 +2283,17 @@ function showDetail(idx) {
       else if (isGame) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();showGameDropdown(this,'${inputId}')">Jeux</button>`;
       else if (isGameDay) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();document.getElementById('${inputId}').value=new Date().toISOString().slice(0,10)+'T00:00:00Z';document.getElementById('${inputId}').dispatchEvent(new Event('input'))">Aujourd'hui</button>`;
       else if (isTransactionId) afBtn = `<button class="autofill-btn" onclick="event.stopPropagation();document.getElementById('${inputId}').value=crypto.randomUUID();document.getElementById('${inputId}').dispatchEvent(new Event('input'))">UUID</button>`;
-      const inputHtml = afBtn
-        ? `<div class="autofill-wrap"><input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">${afBtn}</div>`
-        : `<input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">`;
+      let inputHtml;
+      if (p.options) {
+        inputHtml = `<select class="param-input" id="${inputId}" data-param="${p.name}" data-ispath="false">` +
+          `<option value="">— Choisir —</option>` +
+          p.options.map(o => `<option value="${o}">${o}</option>`).join('') +
+          `</select>`;
+      } else if (afBtn) {
+        inputHtml = `<div class="autofill-wrap"><input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">${afBtn}</div>`;
+      } else {
+        inputHtml = `<input class="param-input" type="${inputType}" id="${inputId}" placeholder="${p.name}" data-param="${p.name}" data-ispath="${!!p.isPath}">`;
+      }
       paramsHtml += `
         <div class="param-row">
           <div class="param-meta">
